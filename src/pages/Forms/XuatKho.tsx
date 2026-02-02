@@ -16,93 +16,83 @@ interface Material {
   donGia: number;
 }
 
-interface PurchaseOrder {
+interface ExportReceipt {
   id: string;
   ngayTao: string;
-  soDH: string;
-  tenNCC: string;
-  diaChi: string;
-  sdt: string;
-  email: string;
-  hangChuyenGiao: string;
-  trangThai: "Chờ xác nhận" | "Đã xác nhận" | "Đã giao hàng";
+  soPhieu: string;
+  nguoiNhan: string;
+  soChungTu?: string;
+  kho: string;
   tongTien: number;
-  ghiChu: string;
+  lyDo: string;
+  trangThai: "Chờ xác nhận" | "Đã xác nhận";
   materials: Material[];
 }
 
-export default function DonDatHang() {
-  const [orders, setOrders] = useState<PurchaseOrder[]>([
+export default function XuatKho() {
+  const [receipts, setReceipts] = useState<ExportReceipt[]>([
     {
-      id: "DO001",
+      id: "EX001",
       ngayTao: "2026-01-20",
-      soDH: "DO001",
-      tenNCC: "Công ty ABC",
-      diaChi: "123 Đường ABC, Quận 1",
-      sdt: "0123456789",
-      email: "abc@company.com",
-      hangChuyenGiao: "2026-02-01",
+      soPhieu: "EX001",
+      nguoiNhan: "Cửa hàng số 1",
+      soChungTu: "CT-001",
+      kho: "kho-a",
+      tongTien: 3500000,
+      lyDo: "Bán hàng",
       trangThai: "Chờ xác nhận",
-      tongTien: 8500000,
-      ghiChu: "Đặt hàng nhanh",
       materials: [
-        { stt: 1, id: "1", maHang: "H001", tenHang: "Bột mỳ", donVi: "kg", soLuong: 150, donGia: 50000 },
+        { stt: 1, id: "1", maHang: "H001", tenHang: "Bột mỳ", donVi: "kg", soLuong: 50, donGia: 50000 },
       ],
     },
     {
-      id: "DO002",
+      id: "EX002",
       ngayTao: "2026-01-18",
-      soDH: "DO002",
-      tenNCC: "Công ty XYZ",
-      diaChi: "456 Đường XYZ, Quận 2",
-      sdt: "0987654321",
-      email: "xyz@company.com",
-      hangChuyenGiao: "2026-02-05",
+      soPhieu: "EX002",
+      nguoiNhan: "Cửa hàng số 2",
+      soChungTu: "CT-002",
+      kho: "kho-b",
+      tongTien: 2800000,
+      lyDo: "Bán hàng",
       trangThai: "Đã xác nhận",
-      tongTien: 5600000,
-      ghiChu: "Hàng chất lượng",
       materials: [
-        { stt: 1, id: "2", maHang: "H002", tenHang: "Đường trắng", donVi: "kg", soLuong: 200, donGia: 28000 },
+        { stt: 1, id: "2", maHang: "H002", tenHang: "Đường trắng", donVi: "kg", soLuong: 100, donGia: 28000 },
       ],
     },
     {
-      id: "DO003",
+      id: "EX003",
       ngayTao: "2026-01-15",
-      soDH: "DO003",
-      tenNCC: "Công ty DEF",
-      diaChi: "789 Đường DEF, Quận 3",
-      sdt: "0912345678",
-      email: "def@company.com",
-      hangChuyenGiao: "2026-02-10",
-      trangThai: "Đã giao hàng",
-      tongTien: 4200000,
-      ghiChu: "Giao hàng thành công",
+      soPhieu: "EX003",
+      nguoiNhan: "Cửa hàng số 3",
+      soChungTu: "CT-003",
+      kho: "kho-c",
+      tongTien: 1500000,
+      lyDo: "Bán hàng",
+      trangThai: "Đã xác nhận",
       materials: [
-        { stt: 1, id: "3", maHang: "H003", tenHang: "Bơ thực vật", donVi: "kg", soLuong: 75, donGia: 56000 },
+        { stt: 1, id: "3", maHang: "H003", tenHang: "Bơ thực vật", donVi: "kg", soLuong: 25, donGia: 60000 },
       ],
     },
   ]);
 
   const [view, setView] = useState<"list" | "create" | "edit" | "detail">("list");
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(null);
+  const [selectedReceipt, setSelectedReceipt] = useState<ExportReceipt | null>(null);
   const [sortBy, setSortBy] = useState<"ngayTao" | "tongTien">("ngayTao");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [filters, setFilters] = useState({ trangThai: "" });
-  const [filterSearch, setFilterSearch] = useState({ trangThai: "" });
+  const [filters, setFilters] = useState({ kho: "", trangThai: "" });
+  const [filterSearch, setFilterSearch] = useState({ kho: "", trangThai: "" });
 
   const [formData, setFormData] = useState({
-    soDH: "",
+    soPhieu: "",
     ngayTao: new Date().toISOString().split("T")[0],
-    tenNCC: "",
-    diaChi: "",
-    sdt: "",
-    email: "",
-    hangChuyenGiao: "",
-    ghiChu: "",
+    nguoiNhan: "",
+    soChungTu: "",
+    kho: "",
+    lyDo: "Bán hàng",
   });
 
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -116,14 +106,12 @@ export default function DonDatHang() {
 
   const resetForm = () => {
     setFormData({
-      soDH: "",
+      soPhieu: "",
       ngayTao: new Date().toISOString().split("T")[0],
-      tenNCC: "",
-      diaChi: "",
-      sdt: "",
-      email: "",
-      hangChuyenGiao: "",
-      ghiChu: "",
+      nguoiNhan: "",
+      soChungTu: "",
+      kho: "",
+      lyDo: "Bán hàng",
     });
     setMaterials([]);
     setMaterialInput({ maHang: "", tenHang: "", donVi: "kg", soLuong: "", donGia: "" });
@@ -150,67 +138,63 @@ export default function DonDatHang() {
     showToast("Thêm hàng hóa thành công", "success");
   };
 
-  const handleSaveOrder = () => {
-    if (!formData.soDH || !formData.tenNCC || !formData.diaChi || materials.length === 0) {
+  const handleSaveReceipt = () => {
+    if (!formData.soPhieu || !formData.nguoiNhan || !formData.kho || materials.length === 0) {
       showToast("Vui lòng điền đầy đủ thông tin", "error");
       return;
     }
 
     const totalAmount = materials.reduce((sum, m) => sum + m.soLuong * m.donGia, 0);
-    const newOrder: PurchaseOrder = {
-      id: formData.soDH,
+    const newReceipt: ExportReceipt = {
+      id: formData.soPhieu,
       ngayTao: formData.ngayTao,
-      soDH: formData.soDH,
-      tenNCC: formData.tenNCC,
-      diaChi: formData.diaChi,
-      sdt: formData.sdt,
-      email: formData.email,
-      hangChuyenGiao: formData.hangChuyenGiao,
+      soPhieu: formData.soPhieu,
+      nguoiNhan: formData.nguoiNhan,
+      soChungTu: formData.soChungTu,
+      kho: formData.kho,
       tongTien: totalAmount,
-      ghiChu: formData.ghiChu,
+      lyDo: formData.lyDo,
       trangThai: "Chờ xác nhận",
       materials: materials,
     };
 
-    setOrders([...orders, newOrder]);
+    setReceipts([...receipts, newReceipt]);
     resetForm();
     setView("list");
-    showToast("Tạo đơn đặt hàng thành công", "success");
+    showToast("Tạo phiếu xuất kho thành công", "success");
   };
 
-  const handleDeleteOrder = (id: string) => {
+  const handleDeleteReceipt = (id: string) => {
     showConfirm({
-      message: "Bạn có chắc chắn muốn xóa đơn hàng này?",
+      message: "Bạn có chắc chắn muốn xóa phiếu xuất này?",
       onConfirm: () => {
-        setOrders(orders.filter((o) => o.id !== id));
+        setReceipts(receipts.filter((r) => r.id !== id));
       },
     });
   };
 
   const handleStatusChange = (id: string) => {
-    setOrders(
-      orders.map((o) => {
-        if (o.id === id) {
-          const statusMap: Record<string, string> = {
-            "Chờ xác nhận": "Đã xác nhận",
-            "Đã xác nhận": "Đã giao hàng",
-            "Đã giao hàng": "Chờ xác nhận",
-          };
-          return { ...o, trangThai: statusMap[o.trangThai] as any };
-        }
-        return o;
-      })
+    setReceipts(
+      receipts.map((r) =>
+        r.id === id
+          ? {
+              ...r,
+              trangThai: r.trangThai === "Chờ xác nhận" ? "Đã xác nhận" : "Chờ xác nhận",
+            }
+          : r
+      )
     );
     showToast("Cập nhật trạng thái thành công", "success");
   };
 
   // Filter and sort
-  const filteredOrders = orders
+  const filteredReceipts = receipts
     .filter(
-      (o) =>
-        (o.soDH.toLowerCase().includes(searchTerm.toLowerCase()) ||
-         o.tenNCC.toLowerCase().includes(searchTerm.toLowerCase())) &&
-        (!filters.trangThai || o.trangThai === filters.trangThai)
+      (r) =>
+        (r.soPhieu.toLowerCase().includes(searchTerm.toLowerCase()) ||
+         r.nguoiNhan.toLowerCase().includes(searchTerm.toLowerCase())) &&
+        (!filters.kho || r.kho === filters.kho) &&
+        (!filters.trangThai || r.trangThai === filters.trangThai)
     )
     .sort((a, b) => {
       let comparison = 0;
@@ -222,17 +206,17 @@ export default function DonDatHang() {
       return sortOrder === "desc" ? -comparison : comparison;
     });
 
-  const paginatedOrders = filteredOrders.slice(
+  const paginatedReceipts = filteredReceipts.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
-  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredReceipts.length / itemsPerPage);
 
   if (view === "list") {
     return (
       <div className="space-y-4">
-        <PageBreadcrumb pageTitle="Đơn Đặt Hàng" />
-        <PageMeta title="Đơn Đặt Hàng" description="Quản lý đơn đặt hàng" />
+        <PageBreadcrumb pageTitle="Phiếu Xuất Kho" />
+        <PageMeta title="Phiếu Xuất Kho" description="Quản lý phiếu xuất kho" />
 
         <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
           {/* Header Section */}
@@ -240,10 +224,10 @@ export default function DonDatHang() {
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Danh Sách Đơn Đặt Hàng
+                  Danh Sách Phiếu Xuất Kho
                 </h2>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  Quản lý đơn đặt hàng từ các nhà cung cấp.
+                  Quản lý phiếu xuất kho hàng hóa và theo dõi bán hàng.
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -281,7 +265,7 @@ export default function DonDatHang() {
                       d="M12 4v16m8-8H4"
                     />
                   </svg>
-                  Thêm Đơn Hàng
+                  Thêm Phiếu Xuất
                 </button>
               </div>
             </div>
@@ -306,7 +290,7 @@ export default function DonDatHang() {
                 </svg>
                 <input
                   type="text"
-                  placeholder="Tìm đơn hàng hoặc NCC..."
+                  placeholder="Tìm phiếu hoặc người nhận..."
                   value={searchTerm}
                   onChange={(e) => {
                     setSearchTerm(e.target.value);
@@ -339,8 +323,34 @@ export default function DonDatHang() {
                         <div className="space-y-4">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                              Trạng Thái
+                              Kho
                             </label>
+                            <input
+                            type="text"
+                            placeholder="Tìm kho..."
+                            value={filterSearch.kho}
+                            onChange={(e) => setFilterSearch({ ...filterSearch, kho: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                          <div className="mt-2 space-y-2 max-h-40 overflow-y-auto">
+                            {["kho-a", "kho-b", "kho-c"].filter(k => k.includes(filterSearch.kho.toLowerCase())).map(kho => (
+                              <label key={kho} className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={filters.kho === kho}
+                                  onChange={(e) => setFilters({ ...filters, kho: e.target.checked ? kho : "" })}
+                                  className="rounded"
+                                />
+                                <span className="text-sm text-gray-700 dark:text-gray-300">{kho}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Trạng Thái
+                          </label>
                           <input
                             type="text"
                             placeholder="Tìm trạng thái..."
@@ -349,7 +359,7 @@ export default function DonDatHang() {
                             className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                           <div className="mt-2 space-y-2 max-h-40 overflow-y-auto">
-                            {["Chờ xác nhận", "Đã xác nhận", "Đã giao hàng"].filter(s => s.toLowerCase().includes(filterSearch.trangThai.toLowerCase())).map(status => (
+                            {["Chờ xác nhận", "Đã xác nhận"].filter(s => s.toLowerCase().includes(filterSearch.trangThai.toLowerCase())).map(status => (
                               <label key={status} className="flex items-center gap-2 cursor-pointer">
                                 <input
                                   type="checkbox"
@@ -363,15 +373,15 @@ export default function DonDatHang() {
                           </div>
                         </div>
 
-                        <button
-                          onClick={() => setIsFilterOpen(false)}
-                          className="w-full px-4 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
-                        >
-                          Apply
-                        </button>
+                          <button
+                            onClick={() => setIsFilterOpen(false)}
+                            className="w-full px-4 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                          >
+                            Apply
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  </>
+                    </>
                   )}
                 </div>
 
@@ -400,16 +410,16 @@ export default function DonDatHang() {
               <thead className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">
-                    Số ĐH
+                    Số Phiếu
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">
                     Ngày Tạo
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">
-                    NCC
+                    Người Nhận
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">
-                    Hạn Giao
+                    Kho
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">
                     Tổng Tiền
@@ -423,65 +433,61 @@ export default function DonDatHang() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {paginatedOrders.map((order) => (
+                {paginatedReceipts.map((receipt) => (
                   <tr
-                    key={order.id}
+                    key={receipt.id}
                     className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                   >
                     <td className="px-6 py-4">
                       <span className="font-medium text-gray-900 dark:text-white">
-                        {order.soDH}
+                        {receipt.soPhieu}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
-                      {new Date(order.ngayTao).toLocaleDateString("vi-VN")}
+                      {new Date(receipt.ngayTao).toLocaleDateString("vi-VN")}
                     </td>
                     <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
-                      {order.tenNCC}
+                      {receipt.nguoiNhan}
                     </td>
                     <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
-                      {new Date(order.hangChuyenGiao).toLocaleDateString("vi-VN")}
+                      {receipt.kho}
                     </td>
                     <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">
-                      {order.tongTien.toLocaleString("vi-VN")}₫
+                      {receipt.tongTien.toLocaleString("vi-VN")}₫
                     </td>
                     <td className="px-6 py-4">
                       <span
                         className={`inline-block px-3 py-1.5 rounded-full text-xs font-medium ${
-                          order.trangThai === "Đã giao hàng"
+                          receipt.trangThai === "Đã xác nhận"
                             ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400"
-                            : order.trangThai === "Đã xác nhận"
-                            ? "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400"
                             : "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400"
                         }`}
                       >
-                        {order.trangThai}
+                        {receipt.trangThai}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-center gap-2">
                         <ActionDropdown
                           onView={() => {
-                            setSelectedOrder(order);
+                            setSelectedReceipt(receipt);
                             setView("detail");
                           }}
                           onEdit={() => {
-                            setSelectedOrder(order);
+                            setSelectedReceipt(receipt);
                             setFormData({
-                              soDH: order.soDH,
-                              ngayTao: order.ngayTao,
-                              tenNCC: order.tenNCC,
-                              diaChi: order.diaChi,
-                              sdt: order.sdt,
-                              email: order.email,
-                              hangChuyenGiao: order.hangChuyenGiao,
-                              ghiChu: order.ghiChu,
+                              soPhieu: receipt.soPhieu,
+                              ngayTao: receipt.ngayTao,
+                              nguoiNhan: receipt.nguoiNhan,
+                              soChungTu: receipt.soChungTu || "",
+                              kho: receipt.kho,
+                              lyDo: receipt.lyDo,
                             });
-                            setMaterials(order.materials);
+                            setMaterials(receipt.materials);
                             setView("edit");
                           }}
-                          onDelete={() => handleDeleteOrder(order.id)}
-                          onStatusChange={() => handleStatusChange(order.id)}
+                          onDelete={() => handleDeleteReceipt(receipt.id)}
+                          onStatusChange={() => handleStatusChange(receipt.id)}
                         />
                       </div>
                     </td>
@@ -495,8 +501,8 @@ export default function DonDatHang() {
           <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Hiển thị {(currentPage - 1) * itemsPerPage + 1} đến{" "}
-              {Math.min(currentPage * itemsPerPage, filteredOrders.length)} trong{" "}
-              {filteredOrders.length} đơn hàng
+              {Math.min(currentPage * itemsPerPage, filteredReceipts.length)} trong{" "}
+              {filteredReceipts.length} phiếu
             </p>
             <div className="flex gap-2">
               <button
@@ -537,16 +543,16 @@ export default function DonDatHang() {
     return (
       <div className="space-y-4">
         <PageBreadcrumb
-          pageTitle={view === "create" ? "Thêm Đơn Hàng" : "Chỉnh Sửa Đơn Hàng"}
+          pageTitle={view === "create" ? "Thêm Phiếu Xuất" : "Chỉnh Sửa Phiếu Xuất"}
         />
 
         <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-6">
           <div className="mb-8">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-              {view === "create" ? "Tạo Đơn Đặt Hàng Mới" : "Chỉnh Sửa Đơn Đặt Hàng"}
+              {view === "create" ? "Tạo Phiếu Xuất Mới" : "Chỉnh Sửa Phiếu Xuất"}
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Nhập thông tin đơn hàng và danh sách hàng hóa cần đặt
+              Nhập thông tin phiếu xuất kho và danh sách hàng hóa
             </p>
           </div>
 
@@ -554,13 +560,13 @@ export default function DonDatHang() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Số Đơn Hàng
+                Số Phiếu
               </label>
               <input
                 type="text"
-                value={formData.soDH}
-                onChange={(e) => setFormData({ ...formData, soDH: e.target.value })}
-                placeholder="DO001"
+                value={formData.soPhieu}
+                onChange={(e) => setFormData({ ...formData, soPhieu: e.target.value })}
+                placeholder="EX001"
                 className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -579,77 +585,59 @@ export default function DonDatHang() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Nhà Cung Cấp
+                Người Nhận
               </label>
               <input
                 type="text"
-                value={formData.tenNCC}
-                onChange={(e) => setFormData({ ...formData, tenNCC: e.target.value })}
-                placeholder="Tên nhà cung cấp"
+                value={formData.nguoiNhan}
+                onChange={(e) => setFormData({ ...formData, nguoiNhan: e.target.value })}
+                placeholder="Tên cửa hàng"
                 className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Hạn Giao Hàng
+                Lý Do Xuất
               </label>
-              <input
-                type="date"
-                value={formData.hangChuyenGiao}
-                onChange={(e) => setFormData({ ...formData, hangChuyenGiao: e.target.value })}
+              <select
+                value={formData.lyDo}
+                onChange={(e) => setFormData({ ...formData, lyDo: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              >
+                <option value="Bán hàng">Bán hàng</option>
+                <option value="Hỏng hóc">Hỏng hóc</option>
+                <option value="Khác">Khác</option>
+              </select>
             </div>
 
-            <div className="md:col-span-2">
+            <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Địa Chỉ
+                Kho
+              </label>
+              <select
+                value={formData.kho}
+                onChange={(e) => setFormData({ ...formData, kho: e.target.value })}
+                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Chọn kho</option>
+                <option value="kho-a">Kho A</option>
+                <option value="kho-b">Kho B</option>
+                <option value="kho-c">Kho C</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Số Chứng Từ
               </label>
               <input
                 type="text"
-                value={formData.diaChi}
-                onChange={(e) => setFormData({ ...formData, diaChi: e.target.value })}
-                placeholder="Địa chỉ giao hàng"
-                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Số Điện Thoại
-              </label>
-              <input
-                type="tel"
-                value={formData.sdt}
-                onChange={(e) => setFormData({ ...formData, sdt: e.target.value })}
-                placeholder="0123456789"
-                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Email
-              </label>
-              <input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="email@company.com"
-                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Ghi Chú
-              </label>
-              <textarea
-                value={formData.ghiChu}
-                onChange={(e) => setFormData({ ...formData, ghiChu: e.target.value })}
-                placeholder="Ghi chú thêm về đơn hàng"
-                rows={3}
+                value={formData.soChungTu}
+                onChange={(e) =>
+                  setFormData({ ...formData, soChungTu: e.target.value })
+                }
+                placeholder="CT-001"
                 className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -840,7 +828,7 @@ export default function DonDatHang() {
           {/* Action Buttons */}
           <div className="flex gap-3">
             <button
-              onClick={handleSaveOrder}
+              onClick={handleSaveReceipt}
               className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -851,7 +839,7 @@ export default function DonDatHang() {
                   d="M5 13l4 4L19 7"
                 />
               </svg>
-              {view === "create" ? "Tạo Đơn" : "Cập Nhật"}
+              {view === "create" ? "Tạo Phiếu" : "Cập Nhật"}
             </button>
             <button
               onClick={() => {
@@ -876,15 +864,15 @@ export default function DonDatHang() {
     );
   }
 
-  if (view === "detail" && selectedOrder) {
-    const totalAmount = selectedOrder.materials.reduce(
+  if (view === "detail" && selectedReceipt) {
+    const totalAmount = selectedReceipt.materials.reduce(
       (sum, m) => sum + m.soLuong * m.donGia,
       0
     );
 
     return (
       <div className="space-y-4">
-        <PageBreadcrumb pageTitle={`Chi Tiết Đơn Hàng ${selectedOrder.soDH}`} />
+        <PageBreadcrumb pageTitle={`Chi Tiết Phiếu ${selectedReceipt.soPhieu}`} />
 
         {/* Back Button */}
         <button
@@ -909,75 +897,57 @@ export default function DonDatHang() {
               <div className="flex items-start justify-between mb-6">
                 <div>
                   <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                    {selectedOrder.soDH}
+                    {selectedReceipt.soPhieu}
                   </h2>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    Ngày tạo: {new Date(selectedOrder.ngayTao).toLocaleDateString("vi-VN")}
+                    Ngày tạo: {new Date(selectedReceipt.ngayTao).toLocaleDateString("vi-VN")}
                   </p>
                 </div>
                 <span
                   className={`inline-block px-4 py-2 rounded-full text-sm font-medium ${
-                    selectedOrder.trangThai === "Đã giao hàng"
+                    selectedReceipt.trangThai === "Đã xác nhận"
                       ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400"
-                      : selectedOrder.trangThai === "Đã xác nhận"
-                      ? "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400"
                       : "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400"
                   }`}
                 >
-                  {selectedOrder.trangThai}
+                  {selectedReceipt.trangThai}
                 </span>
               </div>
             </div>
 
-            {/* Order Info Grid */}
-            <div className="grid grid-cols-2 gap-6 mb-8 pb-8 border-b border-gray-200 dark:border-gray-700">
+            {/* Receipt Info Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-2 gap-6 mb-8 pb-8 border-b border-gray-200 dark:border-gray-700">
               <div>
                 <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
-                  Nhà Cung Cấp
+                  Người Nhận
                 </p>
                 <p className="text-sm font-medium text-gray-900 dark:text-white">
-                  {selectedOrder.tenNCC}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
-                  Địa Chỉ
-                </p>
-                <p className="text-sm font-medium text-gray-900 dark:text-white">
-                  {selectedOrder.diaChi}
+                  {selectedReceipt.nguoiNhan}
                 </p>
               </div>
               <div>
                 <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
-                  SDT
+                  Kho
                 </p>
                 <p className="text-sm font-medium text-gray-900 dark:text-white">
-                  {selectedOrder.sdt}
+                  {selectedReceipt.kho}
                 </p>
               </div>
               <div>
                 <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
-                  Email
+                  Lý Do
                 </p>
                 <p className="text-sm font-medium text-gray-900 dark:text-white">
-                  {selectedOrder.email}
+                  {selectedReceipt.lyDo}
                 </p>
               </div>
-              <div className="col-span-2">
-                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
-                  Hạn Giao Hàng
-                </p>
-                <p className="text-sm font-medium text-gray-900 dark:text-white">
-                  {new Date(selectedOrder.hangChuyenGiao).toLocaleDateString("vi-VN")}
-                </p>
-              </div>
-              {selectedOrder.ghiChu && (
-                <div className="col-span-2">
+              {selectedReceipt.soChungTu && (
+                <div>
                   <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
-                    Ghi Chú
+                    Số Chứng Từ
                   </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">
-                    {selectedOrder.ghiChu}
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                    {selectedReceipt.soChungTu}
                   </p>
                 </div>
               )}
@@ -1013,7 +983,7 @@ export default function DonDatHang() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {selectedOrder.materials.map((m) => (
+                    {selectedReceipt.materials.map((m) => (
                       <tr key={m.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                         <td className="px-4 py-3 text-gray-900 dark:text-white font-medium">
                           {m.maHang}
@@ -1055,7 +1025,7 @@ export default function DonDatHang() {
                 Số Hàng Hóa
               </p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {selectedOrder.materials.length}
+                {selectedReceipt.materials.length}
               </p>
             </div>
 
@@ -1064,13 +1034,13 @@ export default function DonDatHang() {
                 Tổng SL
               </p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {selectedOrder.materials.reduce((sum, m) => sum + m.soLuong, 0)}
+                {selectedReceipt.materials.reduce((sum, m) => sum + m.soLuong, 0)}
               </p>
             </div>
 
             <div className="flex gap-2 pt-4">
               <button
-                onClick={() => handleStatusChange(selectedOrder.id)}
+                onClick={() => handleStatusChange(selectedReceipt.id)}
                 className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1081,22 +1051,20 @@ export default function DonDatHang() {
                     d="M5 13l4 4L19 7"
                   />
                 </svg>
-                Cập Nhật
+                Xác Nhận
               </button>
               <button
                 onClick={() => {
-                  setSelectedOrder(selectedOrder);
+                  setSelectedReceipt(selectedReceipt);
                   setFormData({
-                    soDH: selectedOrder.soDH,
-                    ngayTao: selectedOrder.ngayTao,
-                    tenNCC: selectedOrder.tenNCC,
-                    diaChi: selectedOrder.diaChi,
-                    sdt: selectedOrder.sdt,
-                    email: selectedOrder.email,
-                    hangChuyenGiao: selectedOrder.hangChuyenGiao,
-                    ghiChu: selectedOrder.ghiChu,
+                    soPhieu: selectedReceipt.soPhieu,
+                    ngayTao: selectedReceipt.ngayTao,
+                    nguoiNhan: selectedReceipt.nguoiNhan,
+                    soChungTu: selectedReceipt.soChungTu || "",
+                    kho: selectedReceipt.kho,
+                    lyDo: selectedReceipt.lyDo,
                   });
-                  setMaterials(selectedOrder.materials);
+                  setMaterials(selectedReceipt.materials);
                   setView("edit");
                 }}
                 className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"

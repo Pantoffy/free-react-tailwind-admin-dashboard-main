@@ -1,19 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
-import ComponentCard from "../../components/common/ComponentCard";
 import { showToast } from "../../components/common/Toast";
 import { showConfirm } from "../../components/common/ConfirmDialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from "../../components/ui/table";
-import Badge from "../../components/ui/badge/Badge";
 
 interface Material {
   stt: number;
@@ -39,7 +30,6 @@ interface Receipt {
 }
 
 export default function NhapKho() {
-  // State for list and form
   const [receipts, setReceipts] = useState<Receipt[]>([
     {
       id: "PN001",
@@ -52,24 +42,50 @@ export default function NhapKho() {
       soChungTu: "CT-001",
       trangThai: "Chờ xác nhận",
       materials: [
-        {
-          stt: 1,
-          id: "1",
-          maHang: "H001",
-          tenHang: "Bột mỳ",
-          donVi: "kg",
-          soLuong: 100,
-          donGia: 50000,
-        },
+        { stt: 1, id: "1", maHang: "H001", tenHang: "Bột mỳ", donVi: "kg", soLuong: 100, donGia: 50000 },
+      ],
+    },
+    {
+      id: "PN002",
+      ngayTao: "2026-01-18",
+      soPhieu: "PN002",
+      tenNCC: "Công ty XYZ",
+      soHoaDonNCC: "HD-002",
+      kho: "kho-b",
+      tongTien: 3500000,
+      soChungTu: "CT-002",
+      trangThai: "Đã xác nhận",
+      materials: [
+        { stt: 1, id: "2", maHang: "H002", tenHang: "Đường trắng", donVi: "kg", soLuong: 200, donGia: 17500 },
+      ],
+    },
+    {
+      id: "PN003",
+      ngayTao: "2026-01-15",
+      soPhieu: "PN003",
+      tenNCC: "Công ty DEF",
+      soHoaDonNCC: "HD-003",
+      kho: "kho-c",
+      tongTien: 2800000,
+      soChungTu: "CT-003",
+      trangThai: "Đã xác nhận",
+      materials: [
+        { stt: 1, id: "3", maHang: "H003", tenHang: "Bơ thực vật", donVi: "kg", soLuong: 50, donGia: 56000 },
       ],
     },
   ]);
 
-  const [view, setView] = useState<"list" | "create" | "edit" | "detail">(
-    "list"
-  );
+  const [view, setView] = useState<"list" | "create" | "edit" | "detail">("list");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null);
+  const [sortBy, setSortBy] = useState<"ngayTao" | "tongTien">("ngayTao");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [filters, setFilters] = useState({ kho: "", trangThai: "" });
+  const [filterSearch, setFilterSearch] = useState({ kho: "", trangThai: "" });
+
   const [formData, setFormData] = useState({
     soPhieu: "",
     ngayTao: new Date().toISOString().split("T")[0],
@@ -88,7 +104,6 @@ export default function NhapKho() {
     donGia: "",
   });
 
-  // Reset form
   const resetForm = () => {
     setFormData({
       soPhieu: "",
@@ -99,740 +114,687 @@ export default function NhapKho() {
       soChungTu: "",
     });
     setMaterials([]);
-    setMaterialInput({
-      maHang: "",
-      tenHang: "",
-      donVi: "kg",
-      soLuong: "",
-      donGia: "",
-    });
+    setMaterialInput({ maHang: "", tenHang: "", donVi: "kg", soLuong: "", donGia: "" });
   };
 
-  // Handle form input change
-  const handleFormChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  // Handle material input change
-  const handleMaterialChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    setMaterialInput((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  // Add material
-  const addMaterial = () => {
-    if (
-      materialInput.maHang &&
-      materialInput.tenHang &&
-      materialInput.soLuong &&
-      materialInput.donGia
-    ) {
-      const newMaterial: Material = {
-        stt: materials.length + 1,
-        id: Date.now().toString(),
-        maHang: materialInput.maHang,
-        tenHang: materialInput.tenHang,
-        donVi: materialInput.donVi,
-        soLuong: parseFloat(materialInput.soLuong),
-        donGia: parseFloat(materialInput.donGia),
-      };
-      setMaterials((prev) => [...prev, newMaterial]);
-      setMaterialInput({
-        maHang: "",
-        tenHang: "",
-        donVi: "kg",
-        soLuong: "",
-        donGia: "",
-      });
-    } else {
-      showToast("Vui lòng điền đầy đủ thông tin hàng hóa", "warning");
-    }
-  };
-
-  // Remove material
-  const removeMaterial = (id: string) => {
-    setMaterials((prev) =>
-      prev.filter((m) => m.id !== id).map((m, index) => ({
-        ...m,
-        stt: index + 1,
-      }))
-    );
-  };
-
-  // Calculate total
-  const calculateTotal = () => {
-    return materials.reduce((sum, m) => sum + m.soLuong * m.donGia, 0);
-  };
-
-  // Save receipt
-  const handleSaveReceipt = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (
-      !formData.soPhieu ||
-      !formData.tenNCC ||
-      !formData.kho ||
-      materials.length === 0
-    ) {
-      showToast("Vui lòng điền đầy đủ thông tin", "warning");
+  const handleAddMaterial = () => {
+    if (!materialInput.maHang || !materialInput.tenHang || !materialInput.soLuong || !materialInput.donGia) {
+      showToast("Vui lòng điền đầy đủ thông tin hàng hóa", "error");
       return;
     }
 
-    if (view === "create") {
-      const newReceipt: Receipt = {
-        id: Date.now().toString(),
-        soPhieu: formData.soPhieu,
-        ngayTao: formData.ngayTao,
-        tenNCC: formData.tenNCC,
-        soHoaDonNCC: formData.soHoaDonNCC,
-        kho: formData.kho,
-        soChungTu: formData.soChungTu,
-        tongTien: calculateTotal(),
-        trangThai: "Chờ xác nhận",
-        materials: materials,
-      };
-      setReceipts((prev) => [newReceipt, ...prev]);
-      showToast("Phiếu nhập kho đã được tạo!", "success");
-    } else if (view === "edit" && selectedReceipt) {
-      setReceipts((prev) =>
-        prev.map((r) =>
-          r.id === selectedReceipt.id
-            ? {
-                ...r,
-                soPhieu: formData.soPhieu,
-                ngayTao: formData.ngayTao,
-                tenNCC: formData.tenNCC,
-                soHoaDonNCC: formData.soHoaDonNCC,
-                kho: formData.kho,
-                soChungTu: formData.soChungTu,
-                tongTien: calculateTotal(),
-                materials: materials,
-              }
-            : r
-        )
-      );
-      showToast("Phiếu nhập kho đã được cập nhật!", "success");
+    const newMaterial: Material = {
+      stt: materials.length + 1,
+      id: Math.random().toString(),
+      maHang: materialInput.maHang,
+      tenHang: materialInput.tenHang,
+      donVi: materialInput.donVi,
+      soLuong: Number(materialInput.soLuong),
+      donGia: Number(materialInput.donGia),
+    };
+
+    setMaterials([...materials, newMaterial]);
+    setMaterialInput({ maHang: "", tenHang: "", donVi: "kg", soLuong: "", donGia: "" });
+    showToast("Thêm hàng hóa thành công", "success");
+  };
+
+  const handleSaveReceipt = () => {
+    if (!formData.soPhieu || !formData.tenNCC || !formData.kho || materials.length === 0) {
+      showToast("Vui lòng điền đầy đủ thông tin", "error");
+      return;
     }
 
+    const totalAmount = materials.reduce((sum, m) => sum + m.soLuong * m.donGia, 0);
+    const newReceipt: Receipt = {
+      id: formData.soPhieu,
+      ngayTao: formData.ngayTao,
+      soPhieu: formData.soPhieu,
+      tenNCC: formData.tenNCC,
+      soHoaDonNCC: formData.soHoaDonNCC,
+      kho: formData.kho,
+      tongTien: totalAmount,
+      soChungTu: formData.soChungTu,
+      trangThai: "Chờ xác nhận",
+      materials: materials,
+    };
+
+    setReceipts([...receipts, newReceipt]);
     resetForm();
     setView("list");
+    showToast("Tạo phiếu nhập kho thành công", "success");
   };
 
-  // Delete receipt
   const handleDeleteReceipt = (id: string) => {
-    showConfirm({
-      message: "Bạn có chắc chắn muốn xóa phiếu nhập kho này?",
-      okText: "Xóa",
-      cancelText: "Hủy",
-      onConfirm: () => {
-        setReceipts((prev) => prev.filter((r) => r.id !== id));
-        showToast("Phiếu nhập kho đã được xóa!", "success");
-      },
+    showConfirm("Bạn có chắc chắn muốn xóa phiếu nhập này?", () => {
+      setReceipts(receipts.filter((r) => r.id !== id));
+      showToast("Xóa phiếu nhập thành công", "success");
     });
   };
 
-  // Edit receipt
-  const handleEditReceipt = (receipt: Receipt) => {
-    setSelectedReceipt(receipt);
-    setFormData({
-      soPhieu: receipt.soPhieu,
-      ngayTao: receipt.ngayTao,
-      tenNCC: receipt.tenNCC,
-      soHoaDonNCC: receipt.soHoaDonNCC || "",
-      kho: receipt.kho,
-      soChungTu: receipt.soChungTu || "",
+  const handleStatusChange = (id: string) => {
+    setReceipts(
+      receipts.map((r) =>
+        r.id === id
+          ? {
+              ...r,
+              trangThai: r.trangThai === "Chờ xác nhận" ? "Đã xác nhận" : "Chờ xác nhận",
+            }
+          : r
+      )
+    );
+    showToast("Cập nhật trạng thái thành công", "success");
+  };
+
+  // Filter and sort
+  const filteredReceipts = receipts
+    .filter(
+      (r) =>
+        (r.soPhieu.toLowerCase().includes(searchTerm.toLowerCase()) ||
+         r.tenNCC.toLowerCase().includes(searchTerm.toLowerCase())) &&
+        (!filters.kho || r.kho === filters.kho) &&
+        (!filters.trangThai || r.trangThai === filters.trangThai)
+    )
+    .sort((a, b) => {
+      let comparison = 0;
+      if (sortBy === "ngayTao") {
+        comparison = new Date(a.ngayTao).getTime() - new Date(b.ngayTao).getTime();
+      } else if (sortBy === "tongTien") {
+        comparison = a.tongTien - b.tongTien;
+      }
+      return sortOrder === "desc" ? -comparison : comparison;
     });
-    setMaterials(receipt.materials);
-    setView("edit");
-  };
 
-  // View detail
-  const handleViewDetail = (receipt: Receipt) => {
-    setSelectedReceipt(receipt);
-    setView("detail");
-  };
-
-  // Confirm receipt
-  const handleConfirmReceipt = (id: string) => {
-    showConfirm({
-      message: "Bạn có chắc chắn muốn xác nhận phiếu nhập kho này?",
-      okText: "Xác nhận",
-      cancelText: "Hủy",
-      onConfirm: () => {
-        setReceipts((prev) =>
-          prev.map((r) =>
-            r.id === id ? { ...r, trangThai: "Đã xác nhận" } : r
-          )
-        );
-        showToast("Phiếu nhập kho đã được xác nhận!", "success");
-      },
-    });
-  };
-
-  // Cancel receipt
-  const handleCancelReceipt = (id: string) => {
-    showConfirm({
-      message: "Bạn có chắc chắn muốn hủy xác nhận phiếu nhập kho này?",
-      okText: "Xác nhận",
-      cancelText: "Hủy",
-      onConfirm: () => {
-        setReceipts((prev) =>
-          prev.map((r) =>
-            r.id === id ? { ...r, trangThai: "Chờ xác nhận" } : r
-          )
-        );
-        showToast("Phiếu nhập kho đã được hủy xác nhận!", "success");
-      },
-    });
-  };
-
-  const filteredReceipts = receipts.filter((receipt) =>
-    searchTerm.toLowerCase() === ""
-      ? true
-      : receipt.soPhieu.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        receipt.tenNCC.toLowerCase().includes(searchTerm.toLowerCase())
+  const paginatedReceipts = filteredReceipts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
   );
+  const totalPages = Math.ceil(filteredReceipts.length / itemsPerPage);
 
-  return (
-    <div>
-      <PageMeta
-        title="Quản lý phiếu nhập kho"
-        description="Quản lý phiếu nhập kho nguyên liệu"
-      />
+  if (view === "list") {
+    return (
+      <div className="space-y-4">
+        <PageBreadcrumb pageName="Phiếu Nhập Kho" />
+        <PageMeta title="Phiếu Nhập Kho" description="Quản lý phiếu nhập kho" />
 
-      <PageBreadcrumb pageTitle="Quản lý phiếu nhập kho" />
-
-      {view === "list" && (
-        <div className="space-y-4">
-          <div className="flex gap-3">
-            <button
-              onClick={() => {
-                resetForm();
-                setView("create");
-              }}
-              className="px-4 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600 dark:bg-brand-600 dark:hover:bg-brand-700 transition-colors"
-            >
-              + Thêm phiếu nhập kho
-            </button>
-            <input
-              type="text"
-              placeholder="Tìm kiếm theo số phiếu hoặc nhà cung cấp..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:border-brand-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400"
-            />
-          </div>
-
-          <ComponentCard title={`Danh Sách Phiếu Nhập Kho (${filteredReceipts.length})`}>
-            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
-              <div className="max-w-full overflow-x-auto">
-                <Table>
-                  <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                    <TableRow>
-                      <TableCell
-                        isHeader
-                        className="px-5 py-3 font-medium text-gray-500 text-start text-xs dark:text-gray-400 uppercase"
-                      >
-                        Số Phiếu
-                      </TableCell>
-                      <TableCell
-                        isHeader
-                        className="px-5 py-3 font-medium text-gray-500 text-start text-xs dark:text-gray-400 uppercase"
-                      >
-                        Ngày Tạo
-                      </TableCell>
-                      <TableCell
-                        isHeader
-                        className="px-5 py-3 font-medium text-gray-500 text-start text-xs dark:text-gray-400 uppercase"
-                      >
-                        Nhà Cung Cấp
-                      </TableCell>
-                      <TableCell
-                        isHeader
-                        className="px-5 py-3 font-medium text-gray-500 text-start text-xs dark:text-gray-400 uppercase"
-                      >
-                        Kho
-                      </TableCell>
-                      <TableCell
-                        isHeader
-                        className="px-5 py-3 font-medium text-gray-500 text-start text-xs dark:text-gray-400 uppercase"
-                      >
-                        Tổng Tiền
-                      </TableCell>
-                      <TableCell
-                        isHeader
-                        className="px-5 py-3 font-medium text-gray-500 text-start text-xs dark:text-gray-400 uppercase"
-                      >
-                        Trạng Thái
-                      </TableCell>
-                      <TableCell
-                        isHeader
-                        className="px-5 py-3 font-medium text-gray-500 text-start text-xs dark:text-gray-400 uppercase"
-                      >
-                        Thao Tác
-                      </TableCell>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredReceipts.map((receipt) => (
-                      <TableRow
-                        key={receipt.id}
-                        className="border-b border-gray-100 dark:border-white/[0.05] hover:bg-gray-50/50 dark:hover:bg-white/[0.02]"
-                      >
-                        <TableCell className="px-5 py-3 text-sm font-medium text-gray-900 dark:text-white">
-                          {receipt.soPhieu}
-                        </TableCell>
-                        <TableCell className="px-5 py-3 text-sm text-gray-600 dark:text-gray-400">
-                          {new Date(receipt.ngayTao).toLocaleDateString("vi-VN")}
-                        </TableCell>
-                        <TableCell className="px-5 py-3 text-sm text-gray-600 dark:text-gray-400">
-                          {receipt.tenNCC}
-                        </TableCell>
-                        <TableCell className="px-5 py-3 text-sm text-gray-600 dark:text-gray-400">
-                          {receipt.kho}
-                        </TableCell>
-                        <TableCell className="px-5 py-3 text-sm font-medium text-gray-900 dark:text-white">
-                          {receipt.tongTien.toLocaleString("vi-VN")} đ
-                        </TableCell>
-                        <TableCell className="px-5 py-3">
-                          <Badge
-                            color={
-                              receipt.trangThai === "Đã xác nhận"
-                                ? "success"
-                                : "warning"
-                            }
-                          >
-                            {receipt.trangThai}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="px-5 py-3">
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleViewDetail(receipt)}
-                              title="Xem chi tiết"
-                              className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 transition-colors"
-                            >
-                              <svg
-                                className="w-4 h-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth="2"
-                                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                                />
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth="2"
-                                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                                />
-                              </svg>
-                            </button>
-                            {receipt.trangThai === "Chờ xác nhận" && (
-                              <>
-                                <button
-                                  onClick={() => handleEditReceipt(receipt)}
-                                  title="Sửa"
-                                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400 dark:hover:bg-orange-900/50 transition-colors"
-                                >
-                                  <svg
-                                    className="w-4 h-4"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth="2"
-                                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-7-4l4.35-4.35m0 0a2.828 2.828 0 114 4L9.172 20.172"
-                                    />
-                                  </svg>
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteReceipt(receipt.id)}
-                                  title="Xóa"
-                                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 transition-colors"
-                                >
-                                  <svg
-                                    className="w-4 h-4"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth="2"
-                                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                    />
-                                  </svg>
-                                </button>
-                                <button
-                                  onClick={() => handleConfirmReceipt(receipt.id)}
-                                  title="Xác nhận"
-                                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50 transition-colors"
-                                >
-                                  <svg
-                                    className="w-4 h-4"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth="2"
-                                      d="M5 13l4 4L19 7"
-                                    />
-                                  </svg>
-                                </button>
-                              </>
-                            )}
-                            {receipt.trangThai === "Đã xác nhận" && (
-                              <button
-                                onClick={() => handleCancelReceipt(receipt.id)}
-                                title="Hủy xác nhận"
-                                className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-yellow-50 text-yellow-600 hover:bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-400 dark:hover:bg-yellow-900/50 transition-colors"
-                              >
-                                <svg
-                                  className="w-4 h-4"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth="2"
-                                    d="M9 15L3 9m0 0l6-6m-6 6h12a6 6 0 010 12h-3"
-                                  />
-                                </svg>
-                              </button>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-
-            {receipts.length === 0 && (
-              <div className="py-8 text-center text-gray-500">
-                Không có phiếu nhập kho nào
-              </div>
-            )}
-          </ComponentCard>
-        </div>
-      )}
-
-      {(view === "create" || view === "edit") && (
-        <form onSubmit={handleSaveReceipt} className="space-y-6">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold text-gray-800 dark:text-white">
-              {view === "create"
-                ? "Tạo phiếu nhập kho mới"
-                : "Sửa phiếu nhập kho"}
-            </h3>
-            <button
-              type="button"
-              onClick={() => {
-                resetForm();
-                setView("list");
-              }}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              ✕
-            </button>
-          </div>
-
-          {/* Thông tin phiếu nhập */}
-          <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-dark">
-            <h4 className="mb-6 text-lg font-semibold text-gray-800 dark:text-white">
-              Thông tin phiếu nhập
-            </h4>
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+          {/* Header Section */}
+          <div className="p-5 lg:p-6 border-b border-gray-200 dark:border-gray-800">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Số phiếu *
-                </label>
-                <input
-                  type="text"
-                  name="soPhieu"
-                  value={formData.soPhieu}
-                  onChange={handleFormChange}
-                  placeholder="Nhập số phiếu"
-                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                  required
-                />
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Danh Sách Phiếu Nhập Kho
+                </h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Quản lý phiếu nhập kho hàng hóa và theo dõi nguyên liệu.
+                </p>
               </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Ngày tạo *
-                </label>
-                <input
-                  type="date"
-                  name="ngayTao"
-                  value={formData.ngayTao}
-                  onChange={handleFormChange}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Nhà cung cấp *
-                </label>
-                <input
-                  type="text"
-                  name="tenNCC"
-                  value={formData.tenNCC}
-                  onChange={handleFormChange}
-                  placeholder="Nhập tên NCC"
-                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Số hóa đơn NCC
-                </label>
-                <input
-                  type="text"
-                  name="soHoaDonNCC"
-                  value={formData.soHoaDonNCC}
-                  onChange={handleFormChange}
-                  placeholder="Nhập số hóa đơn"
-                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Kho *
-                </label>
-                <select
-                  name="kho"
-                  value={formData.kho}
-                  onChange={handleFormChange}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                  required
-                >
-                  <option value="">-- Chọn kho --</option>
-                  <option value="kho-a">Kho A</option>
-                  <option value="kho-b">Kho B</option>
-                  <option value="kho-c">Kho C</option>
-                  <option value="kho-d">Kho D</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Số chứng từ
-                </label>
-                <input
-                  type="text"
-                  name="soChungTu"
-                  value={formData.soChungTu}
-                  onChange={handleFormChange}
-                  placeholder="Nhập số chứng từ"
-                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Thêm hàng hóa */}
-          <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-dark">
-            <h4 className="mb-6 text-lg font-semibold text-gray-800 dark:text-white">
-              Thêm hàng hóa
-            </h4>
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-6">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Mã hàng
-                </label>
-                <input
-                  type="text"
-                  name="maHang"
-                  value={materialInput.maHang}
-                  onChange={handleMaterialChange}
-                  placeholder="Mã hàng"
-                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Tên hàng hóa *
-                </label>
-                <input
-                  type="text"
-                  name="tenHang"
-                  value={materialInput.tenHang}
-                  onChange={handleMaterialChange}
-                  placeholder="Tên hàng"
-                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Đơn vị
-                </label>
-                <select
-                  name="donVi"
-                  value={materialInput.donVi}
-                  onChange={handleMaterialChange}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                >
-                  <option value="kg">kg</option>
-                  <option value="g">g</option>
-                  <option value="l">l</option>
-                  <option value="ml">ml</option>
-                  <option value="cái">cái</option>
-                  <option value="hộp">hộp</option>
-                  <option value="túi">túi</option>
-                  <option value="chai">chai</option>
-                  <option value="lon">lon</option>
-                  <option value="gói">gói</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Số lượng *
-                </label>
-                <input
-                  type="number"
-                  name="soLuong"
-                  value={materialInput.soLuong}
-                  onChange={handleMaterialChange}
-                  placeholder="0"
-                  step="0.01"
-                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Đơn giá *
-                </label>
-                <input
-                  type="number"
-                  name="donGia"
-                  value={materialInput.donGia}
-                  onChange={handleMaterialChange}
-                  placeholder="0"
-                  step="0.01"
-                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                />
-              </div>
-
-              <div className="flex items-end">
+              <div className="flex items-center gap-3">
                 <button
-                  type="button"
-                  onClick={addMaterial}
-                  className="w-full rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600"
+                  onClick={() => {}}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200"
                 >
-                  Thêm
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                    />
+                  </svg>
+                  Export
+                </button>
+                <button
+                  onClick={() => {
+                    resetForm();
+                    setView("create");
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-sm"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M12 4v16m8-8H4"
+                    />
+                  </svg>
+                  Thêm Phiếu Nhập
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Danh sách hàng hóa */}
-          {materials.length > 0 && (
-            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-dark">
-              <h4 className="mb-4 text-lg font-semibold text-gray-800 dark:text-white">
-                Danh sách hàng hóa
-              </h4>
+          {/* Search and Filter Section */}
+          <div className="p-5 lg:p-6 border-b border-gray-200 dark:border-gray-800 overflow-visible">
+            <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+              <div className="relative w-full sm:w-72">
+                <svg
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Tìm phiếu hoặc nhà cung cấp..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                />
+              </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead className="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
+              <div className="flex items-center gap-3 relative">
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setIsFilterOpen(!isFilterOpen)}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                    Filter
+                  </button>
+
+                  {isFilterOpen && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-40" 
+                        onClick={() => setIsFilterOpen(false)}
+                      />
+                      <div className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-2xl z-50 p-4">
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              Kho
+                            </label>
+                            <input
+                            type="text"
+                            placeholder="Tìm kho..."
+                            value={filterSearch.kho}
+                            onChange={(e) => setFilterSearch({ ...filterSearch, kho: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                          <div className="mt-2 space-y-2 max-h-40 overflow-y-auto">
+                            {["kho-a", "kho-b", "kho-c"].filter(k => k.includes(filterSearch.kho.toLowerCase())).map(kho => (
+                              <label key={kho} className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={filters.kho === kho}
+                                  onChange={(e) => setFilters({ ...filters, kho: e.target.checked ? kho : "" })}
+                                  className="rounded"
+                                />
+                                <span className="text-sm text-gray-700 dark:text-gray-300">{kho}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Trạng Thái
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Tìm trạng thái..."
+                            value={filterSearch.trangThai}
+                            onChange={(e) => setFilterSearch({ ...filterSearch, trangThai: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                          <div className="mt-2 space-y-2 max-h-40 overflow-y-auto">
+                            {["Chờ xác nhận", "Đã xác nhận"].filter(s => s.toLowerCase().includes(filterSearch.trangThai.toLowerCase())).map(status => (
+                              <label key={status} className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={filters.trangThai === status}
+                                  onChange={(e) => setFilters({ ...filters, trangThai: e.target.checked ? status : "" })}
+                                  className="rounded"
+                                />
+                                <span className="text-sm text-gray-700 dark:text-gray-300">{status}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => setIsFilterOpen(false)}
+                          className="w-full px-4 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          Apply
+                        </button>
+                      </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as "ngayTao" | "tongTien")}
+                  className="px-3 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="ngayTao">Sắp xếp theo ngày</option>
+                  <option value="tongTien">Sắp xếp theo tiền</option>
+                </select>
+
+                <button
+                  onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                  className="p-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all"
+                >
+                  {sortOrder === "asc" ? "↑" : "↓"}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Table Section */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">
+                    Số Phiếu
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">
+                    Ngày Tạo
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">
+                    Nhà Cung Cấp
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">
+                    Kho
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">
+                    Tổng Tiền
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">
+                    Trạng Thái
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 dark:text-gray-300">
+                    Hành Động
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {paginatedReceipts.map((receipt) => (
+                  <tr
+                    key={receipt.id}
+                    className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                  >
+                    <td className="px-6 py-4">
+                      <span className="font-medium text-gray-900 dark:text-white">
+                        {receipt.soPhieu}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
+                      {new Date(receipt.ngayTao).toLocaleDateString("vi-VN")}
+                    </td>
+                    <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
+                      {receipt.tenNCC}
+                    </td>
+                    <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
+                      {receipt.kho}
+                    </td>
+                    <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">
+                      {receipt.tongTien.toLocaleString("vi-VN")}₫
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`inline-block px-3 py-1.5 rounded-full text-xs font-medium ${
+                          receipt.trangThai === "Đã xác nhận"
+                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400"
+                            : "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400"
+                        }`}
+                      >
+                        {receipt.trangThai}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-center gap-2">
+                        <ActionDropdown
+                          receipt={receipt}
+                          onView={() => {
+                            setSelectedReceipt(receipt);
+                            setView("detail");
+                          }}
+                          onEdit={() => {
+                            setSelectedReceipt(receipt);
+                            setFormData({
+                              soPhieu: receipt.soPhieu,
+                              ngayTao: receipt.ngayTao,
+                              tenNCC: receipt.tenNCC,
+                              soHoaDonNCC: receipt.soHoaDonNCC || "",
+                              kho: receipt.kho,
+                              soChungTu: receipt.soChungTu || "",
+                            });
+                            setMaterials(receipt.materials);
+                            setView("edit");
+                          }}
+                          onDelete={() => handleDeleteReceipt(receipt.id)}
+                          onStatusChange={() => handleStatusChange(receipt.id)}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Hiển thị {(currentPage - 1) * itemsPerPage + 1} đến{" "}
+              {Math.min(currentPage * itemsPerPage, filteredReceipts.length)} trong{" "}
+              {filteredReceipts.length} phiếu
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Trước
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`px-4 py-2 text-sm rounded-lg transition-colors ${
+                    page === currentPage
+                      ? "bg-blue-600 text-white"
+                      : "border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Sau
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (view === "create" || view === "edit") {
+    return (
+      <div className="space-y-4">
+        <PageBreadcrumb
+          pageName={view === "create" ? "Thêm Phiếu Nhập" : "Chỉnh Sửa Phiếu Nhập"}
+        />
+
+        <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-6">
+          <div className="mb-8">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+              {view === "create" ? "Tạo Phiếu Nhập Mới" : "Chỉnh Sửa Phiếu Nhập"}
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Nhập thông tin phiếu nhập kho và danh sách hàng hóa
+            </p>
+          </div>
+
+          {/* Form Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Số Phiếu
+              </label>
+              <input
+                type="text"
+                value={formData.soPhieu}
+                onChange={(e) => setFormData({ ...formData, soPhieu: e.target.value })}
+                placeholder="PN001"
+                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Ngày Tạo
+              </label>
+              <input
+                type="date"
+                value={formData.ngayTao}
+                onChange={(e) => setFormData({ ...formData, ngayTao: e.target.value })}
+                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Nhà Cung Cấp
+              </label>
+              <input
+                type="text"
+                value={formData.tenNCC}
+                onChange={(e) => setFormData({ ...formData, tenNCC: e.target.value })}
+                placeholder="Tên nhà cung cấp"
+                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Số Hóa Đơn NCC
+              </label>
+              <input
+                type="text"
+                value={formData.soHoaDonNCC}
+                onChange={(e) =>
+                  setFormData({ ...formData, soHoaDonNCC: e.target.value })
+                }
+                placeholder="HD-001"
+                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Kho
+              </label>
+              <select
+                value={formData.kho}
+                onChange={(e) => setFormData({ ...formData, kho: e.target.value })}
+                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Chọn kho</option>
+                <option value="kho-a">Kho A</option>
+                <option value="kho-b">Kho B</option>
+                <option value="kho-c">Kho C</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Số Chứng Từ
+              </label>
+              <input
+                type="text"
+                value={formData.soChungTu}
+                onChange={(e) =>
+                  setFormData({ ...formData, soChungTu: e.target.value })
+                }
+                placeholder="CT-001"
+                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          {/* Materials Section */}
+          <div className="mb-8 p-4 lg:p-6 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800/30">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">
+              Thêm Hàng Hóa
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Mã Hàng
+                </label>
+                <input
+                  type="text"
+                  value={materialInput.maHang}
+                  onChange={(e) =>
+                    setMaterialInput({ ...materialInput, maHang: e.target.value })
+                  }
+                  placeholder="H001"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Tên Hàng
+                </label>
+                <input
+                  type="text"
+                  value={materialInput.tenHang}
+                  onChange={(e) =>
+                    setMaterialInput({ ...materialInput, tenHang: e.target.value })
+                  }
+                  placeholder="Bột mỳ"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Đơn Vị
+                </label>
+                <select
+                  value={materialInput.donVi}
+                  onChange={(e) =>
+                    setMaterialInput({ ...materialInput, donVi: e.target.value })
+                  }
+                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="kg">kg</option>
+                  <option value="lít">Lít</option>
+                  <option value="cái">Cái</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Số Lượng
+                </label>
+                <input
+                  type="number"
+                  value={materialInput.soLuong}
+                  onChange={(e) =>
+                    setMaterialInput({ ...materialInput, soLuong: e.target.value })
+                  }
+                  placeholder="100"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Đơn Giá
+                </label>
+                <input
+                  type="number"
+                  value={materialInput.donGia}
+                  onChange={(e) =>
+                    setMaterialInput({ ...materialInput, donGia: e.target.value })
+                  }
+                  placeholder="50000"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={handleAddMaterial}
+              className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+              Thêm Hàng Hóa
+            </button>
+
+            {/* Materials Table */}
+            {materials.length > 0 && (
+              <div className="mt-6 overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="border-b border-gray-300 dark:border-gray-600">
                     <tr>
-                      <th className="px-4 py-3 font-semibold text-gray-900 dark:text-white">
+                      <th className="px-4 py-2 text-left font-semibold text-gray-700 dark:text-gray-300">
                         STT
                       </th>
-                      <th className="px-4 py-3 font-semibold text-gray-900 dark:text-white">
-                        Mã hàng
+                      <th className="px-4 py-2 text-left font-semibold text-gray-700 dark:text-gray-300">
+                        Mã
                       </th>
-                      <th className="px-4 py-3 font-semibold text-gray-900 dark:text-white">
-                        Tên hàng hóa
+                      <th className="px-4 py-2 text-left font-semibold text-gray-700 dark:text-gray-300">
+                        Tên Hàng
                       </th>
-                      <th className="px-4 py-3 font-semibold text-gray-900 dark:text-white">
-                        Đơn vị
+                      <th className="px-4 py-2 text-left font-semibold text-gray-700 dark:text-gray-300">
+                        Đơn Vị
                       </th>
-                      <th className="px-4 py-3 font-semibold text-gray-900 dark:text-white">
-                        Số lượng
+                      <th className="px-4 py-2 text-right font-semibold text-gray-700 dark:text-gray-300">
+                        SL
                       </th>
-                      <th className="px-4 py-3 font-semibold text-gray-900 dark:text-white">
-                        Đơn giá
+                      <th className="px-4 py-2 text-right font-semibold text-gray-700 dark:text-gray-300">
+                        Đơn Giá
                       </th>
-                      <th className="px-4 py-3 font-semibold text-gray-900 dark:text-white">
-                        Thành tiền
+                      <th className="px-4 py-2 text-right font-semibold text-gray-700 dark:text-gray-300">
+                        Thành Tiền
                       </th>
-                      <th className="px-4 py-3 font-semibold text-gray-900 dark:text-white">
-                        Hành động
+                      <th className="px-4 py-2 text-center font-semibold text-gray-700 dark:text-gray-300">
+                        Hành Động
                       </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {materials.map((material) => (
-                      <tr key={material.id}>
-                        <td className="px-4 py-3 text-gray-900 dark:text-gray-300">
-                          {material.stt}
+                    {materials.map((m, idx) => (
+                      <tr key={m.id}>
+                        <td className="px-4 py-2">{idx + 1}</td>
+                        <td className="px-4 py-2">{m.maHang}</td>
+                        <td className="px-4 py-2">{m.tenHang}</td>
+                        <td className="px-4 py-2">{m.donVi}</td>
+                        <td className="px-4 py-2 text-right">{m.soLuong}</td>
+                        <td className="px-4 py-2 text-right">
+                          {m.donGia.toLocaleString("vi-VN")}₫
                         </td>
-                        <td className="px-4 py-3 text-gray-900 dark:text-gray-300">
-                          {material.maHang}
+                        <td className="px-4 py-2 text-right font-medium">
+                          {(m.soLuong * m.donGia).toLocaleString("vi-VN")}₫
                         </td>
-                        <td className="px-4 py-3 text-gray-900 dark:text-gray-300">
-                          {material.tenHang}
-                        </td>
-                        <td className="px-4 py-3 text-gray-900 dark:text-gray-300">
-                          {material.donVi}
-                        </td>
-                        <td className="px-4 py-3 text-gray-900 dark:text-gray-300">
-                          {material.soLuong}
-                        </td>
-                        <td className="px-4 py-3 text-gray-900 dark:text-gray-300">
-                          {material.donGia.toLocaleString("vi-VN")} đ
-                        </td>
-                        <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-300">
-                          {(material.soLuong * material.donGia).toLocaleString(
-                            "vi-VN"
-                          )}{" "}
-                          đ
-                        </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-2 text-center">
                           <button
-                            type="button"
-                            onClick={() => removeMaterial(material.id)}
-                            className="text-red-500 hover:text-red-700 font-medium"
+                            onClick={() => {
+                              setMaterials(materials.filter((_, i) => i !== idx));
+                              showToast("Xóa hàng hóa thành công", "success");
+                            }}
+                            className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-medium"
                           >
                             Xóa
                           </button>
@@ -842,253 +804,358 @@ export default function NhapKho() {
                   </tbody>
                 </table>
               </div>
+            )}
+          </div>
 
-              <div className="mt-4 flex justify-end border-t border-gray-200 pt-4 dark:border-gray-700">
-                <div className="text-right">
-                  <p className="mb-2 text-gray-600 dark:text-gray-400">
-                    Tổng cộng:
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {calculateTotal().toLocaleString("vi-VN")} đ
-                  </p>
-                </div>
+          {/* Total Amount */}
+          {materials.length > 0 && (
+            <div className="mb-8 p-4 bg-blue-50 dark:bg-blue-500/10 rounded-lg border border-blue-200 dark:border-blue-500/20">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-blue-900 dark:text-blue-300">
+                  Tổng Tiền:
+                </span>
+                <span className="text-lg font-bold text-blue-900 dark:text-blue-300">
+                  {materials
+                    .reduce((sum, m) => sum + m.soLuong * m.donGia, 0)
+                    .toLocaleString("vi-VN")}
+                  ₫
+                </span>
               </div>
             </div>
           )}
 
-          {/* Buttons */}
-          <div className="flex justify-end gap-3">
+          {/* Action Buttons */}
+          <div className="flex gap-3">
             <button
-              type="button"
-              onClick={() => {
-                resetForm();
-                setView("list");
-              }}
-              className="rounded-lg border border-gray-300 px-6 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+              onClick={handleSaveReceipt}
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
             >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              {view === "create" ? "Tạo Phiếu" : "Cập Nhật"}
+            </button>
+            <button
+              onClick={() => {
+                setView("list");
+                resetForm();
+              }}
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
               Hủy
             </button>
-
-            <button
-              type="submit"
-              className="rounded-lg bg-brand-500 px-6 py-2 text-sm font-medium text-white hover:bg-brand-600"
-            >
-              {view === "create" ? "Lưu phiếu" : "Cập nhật phiếu"}
-            </button>
           </div>
-        </form>
-      )}
+        </div>
+      </div>
+    );
+  }
 
-      {view === "detail" && selectedReceipt && (
-        <div className="space-y-6">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold text-gray-800 dark:text-white">
-              Chi tiết phiếu nhập kho
-            </h3>
-            <button
-              onClick={() => setView("list")}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              ✕
-            </button>
-          </div>
+  if (view === "detail" && selectedReceipt) {
+    const totalAmount = selectedReceipt.materials.reduce(
+      (sum, m) => sum + m.soLuong * m.donGia,
+      0
+    );
 
-          {/* Detail */}
-          <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-dark">
-            <div className="grid grid-cols-2 gap-6 md:grid-cols-3">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Số phiếu
-                </p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {selectedReceipt.soPhieu}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Ngày tạo
-                </p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {new Date(selectedReceipt.ngayTao).toLocaleDateString(
-                    "vi-VN"
-                  )}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Nhà cung cấp
-                </p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {selectedReceipt.tenNCC}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Số hóa đơn NCC
-                </p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {selectedReceipt.soHoaDonNCC || "-"}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Kho</p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {selectedReceipt.kho}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Số chứng từ
-                </p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {selectedReceipt.soChungTu || "-"}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Tổng tiền
-                </p>
-                <p className="text-xl font-bold text-green-600 dark:text-green-400">
-                  {selectedReceipt.tongTien.toLocaleString("vi-VN")} đ
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Trạng thái
-                </p>
+    return (
+      <div className="space-y-4">
+        <PageBreadcrumb pageName={`Chi Tiết Phiếu ${selectedReceipt.soPhieu}`} />
+
+        {/* Back Button */}
+        <button
+          onClick={() => setView("list")}
+          className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+          Quay Lại
+        </button>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Main Detail Card */}
+          <div className="lg:col-span-2 rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-6">
+            <div className="mb-8">
+              <div className="flex items-start justify-between mb-6">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                    {selectedReceipt.soPhieu}
+                  </h2>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    Ngày tạo: {new Date(selectedReceipt.ngayTao).toLocaleDateString("vi-VN")}
+                  </p>
+                </div>
                 <span
-                  className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${
+                  className={`inline-block px-4 py-2 rounded-full text-sm font-medium ${
                     selectedReceipt.trangThai === "Đã xác nhận"
-                      ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                      : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400"
+                      : "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400"
                   }`}
                 >
                   {selectedReceipt.trangThai}
                 </span>
               </div>
             </div>
-          </div>
 
-          {/* Materials detail */}
-          <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-theme-sm dark:border-gray-800 dark:bg-gray-dark">
-            <h4 className="mb-4 text-lg font-semibold text-gray-800 dark:text-white">
-              Danh sách hàng hóa
-            </h4>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
-                  <tr>
-                    <th className="px-4 py-3 font-semibold text-gray-900 dark:text-white">
-                      STT
-                    </th>
-                    <th className="px-4 py-3 font-semibold text-gray-900 dark:text-white">
-                      Mã hàng
-                    </th>
-                    <th className="px-4 py-3 font-semibold text-gray-900 dark:text-white">
-                      Tên hàng hóa
-                    </th>
-                    <th className="px-4 py-3 font-semibold text-gray-900 dark:text-white">
-                      Đơn vị
-                    </th>
-                    <th className="px-4 py-3 font-semibold text-gray-900 dark:text-white">
-                      Số lượng
-                    </th>
-                    <th className="px-4 py-3 font-semibold text-gray-900 dark:text-white">
-                      Đơn giá
-                    </th>
-                    <th className="px-4 py-3 font-semibold text-gray-900 dark:text-white">
-                      Thành tiền
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {selectedReceipt.materials.map((material) => (
-                    <tr key={material.id}>
-                      <td className="px-4 py-3 text-gray-900 dark:text-gray-300">
-                        {material.stt}
-                      </td>
-                      <td className="px-4 py-3 text-gray-900 dark:text-gray-300">
-                        {material.maHang}
-                      </td>
-                      <td className="px-4 py-3 text-gray-900 dark:text-gray-300">
-                        {material.tenHang}
-                      </td>
-                      <td className="px-4 py-3 text-gray-900 dark:text-gray-300">
-                        {material.donVi}
-                      </td>
-                      <td className="px-4 py-3 text-gray-900 dark:text-gray-300">
-                        {material.soLuong}
-                      </td>
-                      <td className="px-4 py-3 text-gray-900 dark:text-gray-300">
-                        {material.donGia.toLocaleString("vi-VN")} đ
-                      </td>
-                      <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-300">
-                        {(material.soLuong * material.donGia).toLocaleString(
-                          "vi-VN"
-                        )}{" "}
-                        đ
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            {/* Receipt Info Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-2 gap-6 mb-8 pb-8 border-b border-gray-200 dark:border-gray-700">
+              <div>
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
+                  Nhà Cung Cấp
+                </p>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  {selectedReceipt.tenNCC}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
+                  Kho
+                </p>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  {selectedReceipt.kho}
+                </p>
+              </div>
+              {selectedReceipt.soHoaDonNCC && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
+                    Số Hóa Đơn
+                  </p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                    {selectedReceipt.soHoaDonNCC}
+                  </p>
+                </div>
+              )}
+              {selectedReceipt.soChungTu && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
+                    Số Chứng Từ
+                  </p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                    {selectedReceipt.soChungTu}
+                  </p>
+                </div>
+              )}
             </div>
 
-            <div className="mt-4 flex justify-end border-t border-gray-200 pt-4 dark:border-gray-700">
-              <div className="text-right">
-                <p className="mb-2 text-gray-600 dark:text-gray-400">
-                  Tổng cộng:
-                </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {selectedReceipt.tongTien.toLocaleString("vi-VN")} đ
-                </p>
+            {/* Materials List */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">
+                Danh Sách Hàng Hóa
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                    <tr>
+                      <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">
+                        Mã
+                      </th>
+                      <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">
+                        Tên Hàng
+                      </th>
+                      <th className="px-4 py-3 text-center font-semibold text-gray-700 dark:text-gray-300">
+                        Đơn Vị
+                      </th>
+                      <th className="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">
+                        SL
+                      </th>
+                      <th className="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">
+                        Đơn Giá
+                      </th>
+                      <th className="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">
+                        Thành Tiền
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {selectedReceipt.materials.map((m) => (
+                      <tr key={m.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                        <td className="px-4 py-3 text-gray-900 dark:text-white font-medium">
+                          {m.maHang}
+                        </td>
+                        <td className="px-4 py-3 text-gray-900 dark:text-white">{m.tenHang}</td>
+                        <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400">
+                          {m.donVi}
+                        </td>
+                        <td className="px-4 py-3 text-right text-gray-600 dark:text-gray-400">
+                          {m.soLuong}
+                        </td>
+                        <td className="px-4 py-3 text-right text-gray-600 dark:text-gray-400">
+                          {m.donGia.toLocaleString("vi-VN")}₫
+                        </td>
+                        <td className="px-4 py-3 text-right text-gray-900 dark:text-white font-medium">
+                          {(m.soLuong * m.donGia).toLocaleString("vi-VN")}₫
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
 
-          {/* Action buttons */}
-          <div className="flex justify-end gap-3">
-            <button
-              onClick={() => setView("list")}
-              className="rounded-lg border border-gray-300 px-6 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-            >
-              Quay lại
-            </button>
+          {/* Sidebar Metrics */}
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-6">
+              <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-3">
+                Tổng Tiền
+              </p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {totalAmount.toLocaleString("vi-VN")}₫
+              </p>
+            </div>
 
-            {selectedReceipt.trangThai === "Chờ xác nhận" && (
-              <>
-                <button
-                  onClick={() => handleEditReceipt(selectedReceipt)}
-                  className="rounded-lg bg-orange-500 px-6 py-2 text-sm font-medium text-white hover:bg-orange-600"
-                >
-                  Sửa
-                </button>
-                <button
-                  onClick={() => {
-                    handleDeleteReceipt(selectedReceipt.id);
-                    setView("list");
-                  }}
-                  className="rounded-lg bg-red-500 px-6 py-2 text-sm font-medium text-white hover:bg-red-600"
-                >
-                  Xóa
-                </button>
-                <button
-                  onClick={() => {
-                    handleConfirmReceipt(selectedReceipt.id);
-                    setView("list");
-                  }}
-                  className="rounded-lg bg-green-500 px-6 py-2 text-sm font-medium text-white hover:bg-green-600"
-                >
-                  Xác nhận
-                </button>
-              </>
-            )}
+            <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-6">
+              <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-3">
+                Số Hàng Hóa
+              </p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {selectedReceipt.materials.length}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-6">
+              <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-3">
+                Tổng SL
+              </p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {selectedReceipt.materials.reduce((sum, m) => sum + m.soLuong, 0)}
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-4">
+              <button
+                onClick={() => handleStatusChange(selectedReceipt.id)}
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+                Xác Nhận
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedReceipt(selectedReceipt);
+                  setFormData({
+                    soPhieu: selectedReceipt.soPhieu,
+                    ngayTao: selectedReceipt.ngayTao,
+                    tenNCC: selectedReceipt.tenNCC,
+                    soHoaDonNCC: selectedReceipt.soHoaDonNCC || "",
+                    kho: selectedReceipt.kho,
+                    soChungTu: selectedReceipt.soChungTu || "",
+                  });
+                  setMaterials(selectedReceipt.materials);
+                  setView("edit");
+                }}
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  />
+                </svg>
+                Sửa
+              </button>
+            </div>
           </div>
+        </div>
+      </div>
+    );
+  }
+}
+
+// Action Dropdown Component
+function ActionDropdown({
+  receipt,
+  onView,
+  onEdit,
+  onDelete,
+  onStatusChange,
+}: {
+  receipt: Receipt;
+  onView: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  onStatusChange: () => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+      >
+        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 5a2 2 0 110-4 2 2 0 010 4zm0 7a2 2 0 110-4 2 2 0 010 4zm0 7a2 2 0 110-4 2 2 0 010 4z" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10">
+          <button
+            onClick={() => {
+              onView();
+              setIsOpen(false);
+            }}
+            className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 first:rounded-t-lg"
+          >
+            Xem Chi Tiết
+          </button>
+          <button
+            onClick={() => {
+              onEdit();
+              setIsOpen(false);
+            }}
+            className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border-t border-gray-200 dark:border-gray-700"
+          >
+            Chỉnh Sửa
+          </button>
+          <button
+            onClick={() => {
+              onStatusChange();
+              setIsOpen(false);
+            }}
+            className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border-t border-gray-200 dark:border-gray-700"
+          >
+            Cập Nhật Trạng Thái
+          </button>
+          <button
+            onClick={() => {
+              onDelete();
+              setIsOpen(false);
+            }}
+            className="w-full text-left px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 border-t border-gray-200 dark:border-gray-700 last:rounded-b-lg"
+          >
+            Xóa
+          </button>
         </div>
       )}
     </div>
   );
 }
-

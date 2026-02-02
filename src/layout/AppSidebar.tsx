@@ -13,7 +13,6 @@ import {
   PieChartIcon,
   PlugInIcon,
   TableIcon,
-  UserCircleIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
 
@@ -32,21 +31,16 @@ const navItems: NavItem[] = [
   },
   {
     icon: <CalenderIcon />,
-    name: "Calendar",
+    name: "Lịch",
     path: "/calendar",
   },
   {
-    icon: <UserCircleIcon />,
-    name: "User Profile",
-    path: "/profile",
-  },
-  {
-    name: "Forms",
+    name: "Hoạt động kho",
     icon: <ListIcon />,
     subItems: [
-      { name: "Form Elements", path: "/form-elements", pro: false },
       { name: "Đơn Đặt Hàng", path: "/don-dat-hang", pro: false },
       { name: "Nhập Kho", path: "/nhap-kho", pro: false },
+      { name: "Xuất Kho", path: "/xuat-kho", pro: false },
     ],    
   },
   {
@@ -61,14 +55,14 @@ const navItems: NavItem[] = [
   {
     name: "Tables",
     icon: <TableIcon />,
-    subItems: [{ name: "Basic Tables", path: "/basic-tables", pro: false }],
+    subItems: [{ name: "Bảng dữ liệu", path: "/basic-tables", pro: false }],
   },
   {
-    name: "Pages",
+    name: "Trang",
     icon: <PageIcon />,
     subItems: [
-      { name: "Blank Page", path: "/blank", pro: false },
-      { name: "404 Error", path: "/error-404", pro: false },
+      { name: "Trang trống", path: "/blank", pro: false },
+      { name: "Lỗi 404", path: "/error-404", pro: false },
     ],
   },
 ];
@@ -76,30 +70,30 @@ const navItems: NavItem[] = [
 const othersItems: NavItem[] = [
   {
     icon: <PieChartIcon />,
-    name: "Charts",
+    name: "Biểu đồ",
     subItems: [
-      { name: "Line Chart", path: "/line-chart", pro: false },
-      { name: "Bar Chart", path: "/bar-chart", pro: false },
+      { name: "Biểu đồ đường", path: "/line-chart", pro: false },
+      { name: "Biểu đồ cột", path: "/bar-chart", pro: false },
     ],
   },
   {
     icon: <BoxCubeIcon />,
-    name: "UI Elements",
+    name: "Thành phần UI",
     subItems: [
-      { name: "Alerts", path: "/alerts", pro: false },
+      { name: "Cảnh báo", path: "/alerts", pro: false },
       { name: "Avatar", path: "/avatars", pro: false },
       { name: "Badge", path: "/badge", pro: false },
-      { name: "Buttons", path: "/buttons", pro: false },
-      { name: "Images", path: "/images", pro: false },
-      { name: "Videos", path: "/videos", pro: false },
+      { name: "Nút", path: "/buttons", pro: false },
+      { name: "Hình ảnh", path: "/images", pro: false },
+      { name: "Video", path: "/videos", pro: false },
     ],
   },
   {
     icon: <PlugInIcon />,
-    name: "Authentication",
+    name: "Xác thực",
     subItems: [
-      { name: "Sign In", path: "/signin", pro: false },
-      { name: "Sign Up", path: "/signup", pro: false },
+      { name: "Đăng nhập", path: "/signin", pro: false },
+      { name: "Đăng ký", path: "/signup", pro: false },
     ],
   },
 ];

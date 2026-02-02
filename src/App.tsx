@@ -4,7 +4,6 @@ import { ConfirmDialog } from "./components/common/ConfirmDialog";
 import SignIn from "./pages/AuthPages/SignIn";
 import SignUp from "./pages/AuthPages/SignUp";
 import NotFound from "./pages/OtherPage/NotFound";
-import UserProfiles from "./pages/UserProfiles";
 import Videos from "./pages/UiElements/Videos";
 import Images from "./pages/UiElements/Images";
 import Alerts from "./pages/UiElements/Alerts";
@@ -22,6 +21,7 @@ import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
 import NhapKho from "./pages/Forms/NhapKho";
 import DonDatHang from "./pages/Forms/DonDatHang";
+import XuatKho from "./pages/Forms/XuatKho";
 import QuanLyNguyenLieu from "./pages/Inventory/QuanLyNguyenLieu";
 import QuanLyNhaCungCap from "./pages/Inventory/QuanLyNhaCungCap";
 import QuanLyKho from "./pages/Inventory/QuanLyKho";
@@ -39,13 +39,13 @@ export default function App() {
             <Route index path="/" element={<Home />} />
 
             {/* Others Page */}
-            <Route path="/profile" element={<UserProfiles />} />
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/blank" element={<Blank />} />
 
             {/* Forms */}
             <Route path="/form-elements" element={<FormElements />} />
             <Route path="/nhap-kho" element={<NhapKho />} />
+            <Route path="/xuat-kho" element={<XuatKho />} />
             <Route path="/don-dat-hang" element={<DonDatHang />} />
 
             {/* Inventory Management */}
