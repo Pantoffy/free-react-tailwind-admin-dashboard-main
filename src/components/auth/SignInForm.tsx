@@ -30,7 +30,7 @@ export default function SignInForm() {
               Đăng nhập
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Nhập email và mật khẩu để đăng nhập!
+              Nhập tên đăng nhập và mật khẩu!
             </p>
           </div>
 
@@ -47,7 +47,7 @@ export default function SignInForm() {
                 <Label>
                   Tên đăng nhập <span className="text-error-500">*</span>
                 </Label>
-                <Input placeholder="example@gmail.com" />
+                <Input placeholder="Nhập tên đăng nhập" />
               </div>
 
               {/* Password */}

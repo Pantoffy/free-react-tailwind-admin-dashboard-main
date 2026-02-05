@@ -6,7 +6,9 @@ export interface Material {
   code: string;
   name: string;
   categoryId: number;
+  categoryName: string;
   unitId: number;
+  unitName: string;
   supplierId: number;
   stockQuantity: number;
   note?: string;
@@ -21,7 +23,7 @@ export interface Material {
 // Create axios instance with base configuration
 // Sử dụng Vite proxy - request sẽ đi qua localhost:5173/api rồi proxy sang backend
 const apiClient = axios.create({
-  baseURL: "/api/Material/api/materials",
+  baseURL: "/api/Material",
   headers: {
     "Content-Type": "application/json",
   },
@@ -32,7 +34,7 @@ export const materialService = {
   // GET all materials
   getAllMaterials: async (): Promise<Material[]> => {
     try {
-      const response = await apiClient.get<Material[]>("");
+      const response = await apiClient.get<Material[]>("/List");
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -45,6 +47,7 @@ export const materialService = {
       throw error;
     }
   },
+
 
   // GET material by ID
   getMaterialById: async (id: number): Promise<Material> => {
@@ -62,7 +65,7 @@ export const materialService = {
   // POST create new material
   createMaterial: async (material: Omit<Material, "id" | "createdTime">): Promise<Material> => {
     try {
-      const response = await apiClient.post<Material>("", material);
+      const response = await apiClient.post<Material>("/Add", material);
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {

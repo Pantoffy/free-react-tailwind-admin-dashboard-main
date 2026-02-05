@@ -1,22 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import { showToast } from "../../components/common/Toast";
 import { showConfirm } from "../../components/common/ConfirmDialog";
-
-interface Warehouse {
-  id: string;
-  tenKho: string;
-  diaChiKho: string;
-  dienTich: number;
-  nguoiQuanLy: string;
-  sdtNguoiQuanLy: string;
-  moTa: string;
-  ngayTao: string;
-  trangThai: "Hoạt động" | "Vô hiệu hóa";
-}
+import { warehouseService, Warehouse } from "../../services/warehouseService";
 
 // Dropdown Action Component
 const ActionDropdown = ({ 
@@ -63,85 +52,74 @@ const ActionDropdown = ({
 };
 
 export default function QuanLyKho() {
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([
-    {
-      id: "1",
-      tenKho: "Kho A - Chính",
-      diaChiKho: "123 Đường ABC, TP HCM",
-      dienTich: 500,
-      nguoiQuanLy: "Trần Văn B",
-      sdtNguoiQuanLy: "0987654321",
-      moTa: "Kho chính lưu trữ bột mỳ và lương khô",
-      ngayTao: "2026-01-01",
-      trangThai: "Hoạt động",
-    },
-    {
-      id: "2",
-      tenKho: "Kho B - Phụ trợ",
-      diaChiKho: "456 Đường XYZ, Quận 1, TP HCM",
-      dienTich: 300,
-      nguoiQuanLy: "Nguyễn Thị C",
-      sdtNguoiQuanLy: "0912345678",
-      moTa: "Kho phụ trợ lưu trữ các nguyên liệu tươi",
-      ngayTao: "2026-01-05",
-      trangThai: "Hoạt động",
-    },
-    {
-      id: "3",
-      tenKho: "Kho C - Lạnh",
-      diaChiKho: "789 Đường DEF, Quận 2, TP HCM",
-      dienTich: 200,
-      nguoiQuanLy: "Lê Văn D",
-      sdtNguoiQuanLy: "0923456789",
-      moTa: "Kho lạnh duy trì nhiệt độ 0-5°C",
-      ngayTao: "2026-01-10",
-      trangThai: "Hoạt động",
-    },
-  ]);
-
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"list" | "create" | "edit" | "detail">("list");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse | null>(null);
-  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [selectedItems, setSelectedItems] = useState<number[]>([]);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [filters, setFilters] = useState<{ trangThai: string[] }>({
-    trangThai: [],
+  const [filters, setFilters] = useState<{ status: string[] }>({
+    status: [],
   });
   const [formData, setFormData] = useState({
-    tenKho: "",
-    diaChiKho: "",
-    dienTich: "",
-    nguoiQuanLy: "",
-    sdtNguoiQuanLy: "",
-    moTa: "",
+    code: "",
+    name: "",
+    typeId: 1,
+    address: "",
+    area: "",
+    managerName: "",
+    managerPhone: "",
+    note: "",
+    status: "Hoạt động",
   });
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
+  // Fetch warehouses on component mount
+  useEffect(() => {
+    fetchWarehouses();
+  }, []);
+
+  const fetchWarehouses = async () => {
+    try {
+      setLoading(true);
+      const data = await warehouseService.getAllWarehouses();
+      console.log("Warehouses data:", data);
+      setWarehouses(data);
+      showToast("Tải dữ liệu thành công!", "success");
+    } catch (error: any) {
+      let errorMsg = "Unknown error";
+      
+      if (error.response) {
+        errorMsg = `API Error: ${error.response.status} - ${error.response.statusText}`;
+        console.error("Response data:", error.response.data);
+      } else if (error.request) {
+        errorMsg = "Không thể kết nối tới server (CORS / SSL / Server chưa chạy)";
+      } else {
+        errorMsg = error.message;
+      }
+      
+      console.error("Error fetching warehouses:", error);
+      showToast(`Lỗi: ${errorMsg}`, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSelectAll = () => {
     if (selectedItems.length === paginatedWarehouses.length) {
       setSelectedItems([]);
     } else {
-      setSelectedItems(paginatedWarehouses.map(w => w.id));
+      setSelectedItems(paginatedWarehouses.filter(w => w.id !== undefined).map(w => w.id!));
     }
   };
 
-  const handleSelectItem = (id: string) => {
+  const handleSelectItem = (id: number) => {
     setSelectedItems(prev => 
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
-  };
-
-  const resetForm = () => {
-    setFormData({
-      tenKho: "",
-      diaChiKho: "",
-      dienTich: "",
-      nguoiQuanLy: "",
-      sdtNguoiQuanLy: "",
-      moTa: "",
-    });
   };
 
   const handleFormChange = (
@@ -154,57 +132,91 @@ export default function QuanLyKho() {
     }));
   };
 
-  const handleSaveWarehouse = () => {
-    if (!formData.tenKho || !formData.diaChiKho || !formData.dienTich) {
-      showToast("Vui lòng điền đầy đủ thông tin!", "warning");
+  const handleSaveWarehouse = async () => {
+    if (!formData.code || !formData.name) {
+      showToast("Vui lòng điền đầy đủ thông tin (Code và Name)!", "warning");
       return;
     }
 
-    if (view === "create") {
-      const newWarehouse: Warehouse = {
-        id: Date.now().toString(),
-        tenKho: formData.tenKho,
-        diaChiKho: formData.diaChiKho,
-        dienTich: parseFloat(formData.dienTich) || 0,
-        nguoiQuanLy: formData.nguoiQuanLy,
-        sdtNguoiQuanLy: formData.sdtNguoiQuanLy,
-        moTa: formData.moTa,
-        ngayTao: new Date().toISOString().split("T")[0],
-        trangThai: "Hoạt động",
-      };
-      setWarehouses([...warehouses, newWarehouse]);
-      showToast("Kho đã được tạo thành công!", "success");
-    } else if (view === "edit" && selectedWarehouse) {
-      setWarehouses(
-        warehouses.map((w) =>
-          w.id === selectedWarehouse.id
-            ? {
-                ...w,
-                tenKho: formData.tenKho,
-                diaChiKho: formData.diaChiKho,
-                dienTich: parseFloat(formData.dienTich) || 0,
-                nguoiQuanLy: formData.nguoiQuanLy,
-                sdtNguoiQuanLy: formData.sdtNguoiQuanLy,
-                moTa: formData.moTa,
-              }
-            : w
-        )
-      );
-      showToast("Kho đã được cập nhật!", "success");
+    try {
+      if (view === "create") {
+        const result = await warehouseService.createWarehouse({
+          code: formData.code,
+          name: formData.name,
+          typeId: formData.typeId,
+          address: formData.address,
+          area: formData.area ? parseFloat(formData.area) : undefined,
+          managerName: formData.managerName,
+          managerPhone: formData.managerPhone,
+          note: formData.note,
+          status: formData.status,
+        });
+        const newWarehouse = result || { ...formData, typeId: formData.typeId, area: formData.area ? parseFloat(formData.area) : 0, createdTime: new Date().toISOString() };
+        setWarehouses([...warehouses, newWarehouse]);
+        showToast("Kho đã được tạo thành công!", "success");
+      } else if (view === "edit" && selectedWarehouse?.id) {
+        await warehouseService.updateWarehouse(
+          selectedWarehouse.id,
+          {
+            code: formData.code,
+            name: formData.name,
+            typeId: formData.typeId,
+            address: formData.address,
+            area: formData.area ? parseFloat(formData.area) : undefined,
+            managerName: formData.managerName,
+            managerPhone: formData.managerPhone,
+            note: formData.note,
+            status: formData.status,
+          }
+        );
+        const updatedWarehouse = { 
+          ...selectedWarehouse, 
+          code: formData.code,
+          name: formData.name,
+          typeId: formData.typeId,
+          address: formData.address,
+          area: formData.area ? parseFloat(formData.area) : undefined,
+          managerName: formData.managerName,
+          managerPhone: formData.managerPhone,
+          note: formData.note,
+          status: formData.status,
+        };
+        setWarehouses(
+          warehouses.map((w) => (w.id === selectedWarehouse.id ? updatedWarehouse : w))
+        );
+        showToast("Kho đã được cập nhật!", "success");
+      }
+      resetForm();
+      setView("list");
+    } catch (error: any) {
+      console.error(error);
+      let errorMsg = "Lỗi khi lưu kho!";
+      if (error.response) {
+        errorMsg = `API Error: ${error.response.status}`;
+      }
+      showToast(errorMsg, "error");
     }
-
-    resetForm();
-    setView("list");
   };
 
-  const handleDeleteWarehouse = (id: string) => {
+  const handleDeleteWarehouse = (warehouseId: number) => {
     showConfirm({
       message: "Bạn có chắc chắn muốn xóa kho này?",
       okText: "Xóa",
       cancelText: "Hủy",
-      onConfirm: () => {
-        setWarehouses((prev) => prev.filter((w) => w.id !== id));
-        showToast("Kho đã được xóa!", "success");
+      onConfirm: async () => {
+        try {
+          console.log("Deleting warehouse ID:", warehouseId);
+          await warehouseService.deleteWarehouse(warehouseId);
+          setWarehouses(warehouses.filter((w) => w.id !== warehouseId));
+          showToast("Kho đã được xóa!", "success");
+        } catch (error: any) {
+          console.error("Delete error:", error);
+          let errorMsg = "Lỗi khi xóa kho!";
+          if (error.response) {
+            errorMsg = `API Error: ${error.response.status}`;
+          }
+          showToast(errorMsg, "error");
+        }
       },
     });
   };
@@ -212,12 +224,15 @@ export default function QuanLyKho() {
   const handleEditWarehouse = (warehouse: Warehouse) => {
     setSelectedWarehouse(warehouse);
     setFormData({
-      tenKho: warehouse.tenKho,
-      diaChiKho: warehouse.diaChiKho,
-      dienTich: warehouse.dienTich.toString(),
-      nguoiQuanLy: warehouse.nguoiQuanLy,
-      sdtNguoiQuanLy: warehouse.sdtNguoiQuanLy,
-      moTa: warehouse.moTa,
+      code: warehouse.code,
+      name: warehouse.name,
+      typeId: warehouse.typeId,
+      address: warehouse.address || "",
+      area: warehouse.area?.toString() || "",
+      managerName: warehouse.managerName || "",
+      managerPhone: warehouse.managerPhone || "",
+      note: warehouse.note || "",
+      status: warehouse.status || "Hoạt động",
     });
     setView("edit");
   };
@@ -227,25 +242,34 @@ export default function QuanLyKho() {
     setView("detail");
   };
 
-  const handleToggleStatus = (id: string) => {
-    setWarehouses(
-      warehouses.map((w) =>
-        w.id === id
-          ? {
-              ...w,
-              trangThai: w.trangThai === "Hoạt động" ? "Vô hiệu hóa" : "Hoạt động",
-            }
-          : w
-      )
-    );
+  const resetForm = () => {
+    setFormData({
+      code: "",
+      name: "",
+      typeId: 1,
+      address: "",
+      area: "",
+      managerName: "",
+      managerPhone: "",
+      note: "",
+      status: "Hoạt động",
+    });
+    setSelectedWarehouse(null);
   };
 
-  const filteredWarehouses = warehouses.filter((warehouse) =>
-    searchTerm.toLowerCase() === ""
+  const filteredWarehouses = warehouses.filter((warehouse) => {
+    // Apply search filter
+    const matchesSearch = searchTerm.toLowerCase() === ""
       ? true
-      : warehouse.tenKho.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        warehouse.diaChiKho.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+      : warehouse.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        warehouse.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        warehouse.address?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Apply status filter
+    const matchesStatus = filters.status.length === 0 || (warehouse.status && filters.status.includes(warehouse.status));
+    
+    return matchesSearch && matchesStatus;
+  });
 
   const totalPages = Math.ceil(filteredWarehouses.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -345,12 +369,12 @@ export default function QuanLyKho() {
                               <label key={status} className="flex items-center gap-2 p-1 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
                                 <input
                                   type="checkbox"
-                                  checked={filters.trangThai.includes(status)}
+                                  checked={filters.status.includes(status)}
                                   onChange={(e) => {
                                     if (e.target.checked) {
-                                      setFilters({ ...filters, trangThai: [...filters.trangThai, status] });
+                                      setFilters({ ...filters, status: [...filters.status, status] });
                                     } else {
-                                      setFilters({ ...filters, trangThai: filters.trangThai.filter(s => s !== status) });
+                                      setFilters({ ...filters, status: filters.status.filter(s => s !== status) });
                                     }
                                   }}
                                   className="rounded"
@@ -376,7 +400,13 @@ export default function QuanLyKho() {
           </div>
 
           {/* Table Section */}
-          <div className="overflow-x-auto">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">Đang tải danh sách kho...</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-800">
@@ -395,71 +425,70 @@ export default function QuanLyKho() {
                   <th className="px-5 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Trạng Thái</th>
                   <th className="px-5 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ngày Tạo</th>
                   <th className="px-5 py-4"></th>
+                  <th className="px-5 py-4"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                {paginatedWarehouses.map((warehouse) => (
+                {paginatedWarehouses.map((warehouse, index) => (
                   <tr 
-                    key={warehouse.id} 
+                    key={warehouse.id || `warehouse-${index}`} 
                     className="hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
                   >
                     <td className="px-5 py-4">
                       <input 
                         type="checkbox" 
-                        checked={selectedItems.includes(warehouse.id)}
-                        onChange={() => handleSelectItem(warehouse.id)}
+                        checked={warehouse.id ? selectedItems.includes(warehouse.id) : false}
+                        onChange={() => warehouse.id && handleSelectItem(warehouse.id)}
                         className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-800"
                       />
                     </td>
                     <td className="px-5 py-4">
                       <p className="font-medium text-gray-900 dark:text-white text-sm">
-                        {warehouse.tenKho}
+                        {warehouse.name}
                       </p>
                     </td>
                     <td className="px-5 py-4">
                       <span className="text-sm text-gray-600 dark:text-gray-400">
-                        {warehouse.diaChiKho}
+                        {warehouse.address || "-"}
                       </span>
                     </td>
                     <td className="px-5 py-4">
                       <span className="text-sm text-gray-600 dark:text-gray-400">
-                        {warehouse.dienTich} m²
+                        {warehouse.area ? `${warehouse.area} m²` : "-"}
                       </span>
                     </td>
                     <td className="px-5 py-4">
                       <span className="text-sm text-gray-600 dark:text-gray-400">
-                        {warehouse.nguoiQuanLy}
+                        {warehouse.managerName || "-"}
                       </span>
                     </td>
                     <td className="px-5 py-4">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                        warehouse.trangThai === "Hoạt động"
+                        warehouse.status === "Hoạt động"
                           ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                           : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
                       }`}>
-                        {warehouse.trangThai}
+                        {warehouse.status || "Chưa xác định"}
                       </span>
                     </td>
                     <td className="px-5 py-4">
                       <span className="text-sm text-gray-600 dark:text-gray-400">
-                        {formatDate(warehouse.ngayTao)}
+                        {warehouse.createdTime ? formatDate(warehouse.createdTime) : "-"}
                       </span>
                     </td>
                     <td className="px-5 py-4 text-right">
                       <ActionDropdown
                         onView={() => handleViewDetail(warehouse)}
                         onEdit={() => handleEditWarehouse(warehouse)}
-                        onDelete={() => handleDeleteWarehouse(warehouse.id)}
+                        onDelete={() => warehouse.id && handleDeleteWarehouse(warehouse.id)}
                       />
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
-
-          {/* Empty State */}
-          {filteredWarehouses.length === 0 && (
+              {/* Empty State */}
+              {filteredWarehouses.length === 0 && (
             <div className="py-16 text-center">
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                 <svg className="w-8 h-8 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -475,45 +504,47 @@ export default function QuanLyKho() {
             </div>
           )}
 
-          {/* Pagination */}
-          {filteredWarehouses.length > 0 && (
-            <div className="px-5 lg:px-6 py-4 border-t border-gray-200 dark:border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Hiển thị <span className="font-medium text-gray-900 dark:text-white">{startIndex + 1}</span> đến <span className="font-medium text-gray-900 dark:text-white">{Math.min(startIndex + itemsPerPage, filteredWarehouses.length)}</span> của <span className="font-medium text-gray-900 dark:text-white">{filteredWarehouses.length}</span>
-              </p>
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                  className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                  </svg>
-                </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                  <button
-                    key={page}
-                    onClick={() => setCurrentPage(page)}
-                    className={`w-9 h-9 rounded-lg text-sm font-medium transition-all duration-200 ${
-                      currentPage === page
-                        ? "bg-blue-600 text-white shadow-sm"
-                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    }`}
-                  >
-                    {page}
-                  </button>
-                ))}
-                <button 
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
-                  className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </div>
+              {/* Pagination */}
+              {filteredWarehouses.length > 0 && (
+                <div className="px-5 lg:px-6 py-4 border-t border-gray-200 dark:border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Hiển thị <span className="font-medium text-gray-900 dark:text-white">{startIndex + 1}</span> đến <span className="font-medium text-gray-900 dark:text-white">{Math.min(startIndex + itemsPerPage, filteredWarehouses.length)}</span> của <span className="font-medium text-gray-900 dark:text-white">{filteredWarehouses.length}</span>
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`w-9 h-9 rounded-lg text-sm font-medium transition-all duration-200 ${
+                          currentPage === page
+                            ? "bg-blue-600 text-white shadow-sm"
+                            : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                    <button 
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                      className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -546,14 +577,28 @@ export default function QuanLyKho() {
 
             <div className="p-5 lg:p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Mã Code <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="code"
+                    value={formData.code}
+                    onChange={handleFormChange}
+                    className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg dark:bg-gray-800 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
+                    placeholder="VD: WH001"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Tên Kho <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
-                    name="tenKho"
-                    value={formData.tenKho}
+                    name="name"
+                    value={formData.name}
                     onChange={handleFormChange}
                     className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg dark:bg-gray-800 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
                     placeholder="VD: Kho A - Chính"
@@ -562,12 +607,26 @@ export default function QuanLyKho() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Diện Tích (m²) <span className="text-red-500">*</span>
+                    Loại Kho
                   </label>
                   <input
                     type="number"
-                    name="dienTich"
-                    value={formData.dienTich}
+                    name="typeId"
+                    value={formData.typeId}
+                    onChange={handleFormChange}
+                    className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg dark:bg-gray-800 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
+                    placeholder="1"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Diện Tích (m²)
+                  </label>
+                  <input
+                    type="number"
+                    name="area"
+                    value={formData.area}
                     onChange={handleFormChange}
                     className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg dark:bg-gray-800 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
                     placeholder="500"
@@ -576,12 +635,12 @@ export default function QuanLyKho() {
 
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Địa Chỉ Kho <span className="text-red-500">*</span>
+                    Địa Chỉ Kho
                   </label>
                   <input
                     type="text"
-                    name="diaChiKho"
-                    value={formData.diaChiKho}
+                    name="address"
+                    value={formData.address}
                     onChange={handleFormChange}
                     className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg dark:bg-gray-800 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
                     placeholder="VD: 123 Đường ABC, TP HCM"
@@ -594,8 +653,8 @@ export default function QuanLyKho() {
                   </label>
                   <input
                     type="text"
-                    name="nguoiQuanLy"
-                    value={formData.nguoiQuanLy}
+                    name="managerName"
+                    value={formData.managerName}
                     onChange={handleFormChange}
                     className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg dark:bg-gray-800 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
                     placeholder="VD: Trần Văn B"
@@ -608,25 +667,41 @@ export default function QuanLyKho() {
                   </label>
                   <input
                     type="text"
-                    name="sdtNguoiQuanLy"
-                    value={formData.sdtNguoiQuanLy}
+                    name="managerPhone"
+                    value={formData.managerPhone}
                     onChange={handleFormChange}
                     className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg dark:bg-gray-800 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
                     placeholder="VD: 0987654321"
                   />
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Trạng Thái
+                  </label>
+                  <select
+                    name="status"
+                    value={formData.status}
+                    onChange={handleFormChange}
+                    className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg dark:bg-gray-800 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
+                  >
+                    <option>Hoạt động</option>
+                    <option>Ngừng hoạt động</option>
+                    <option>Bảo trì</option>
+                  </select>
+                </div>
+
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Mô Tả
+                    Ghi Chú
                   </label>
                   <textarea
-                    name="moTa"
-                    value={formData.moTa}
+                    name="note"
+                    value={formData.note}
                     onChange={handleFormChange}
                     rows={3}
                     className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg dark:bg-gray-800 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 resize-none"
-                    placeholder="Mô tả chi tiết về kho..."
+                    placeholder="Ghi chú thêm về kho..."
                   />
                 </div>
               </div>
@@ -657,119 +732,138 @@ export default function QuanLyKho() {
         <div className="space-y-6">
           <button
             onClick={() => setView("list")}
-            className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
             </svg>
-            Quay lại danh sách
+            Quay Lại
           </button>
 
-          <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-            <div className="p-5 lg:p-6 border-b border-gray-200 dark:border-gray-800">
-              <div className="flex items-start gap-4">
-                <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                  {selectedWarehouse.tenKho.charAt(0).toUpperCase()}
-                </div>
-                <div className="flex-1">
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                    {selectedWarehouse.tenKho}
-                  </h2>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    {selectedWarehouse.diaChiKho}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleEditWarehouse(selectedWarehouse)}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200"
-                  >
-                    Chỉnh sửa
-                  </button>
-                  <button
-                    onClick={() => handleDeleteWarehouse(selectedWarehouse.id)}
-                    className="px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-all duration-200"
-                  >
-                    Xóa
-                  </button>
-                </div>
+          <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-5 lg:p-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
+              {selectedWarehouse.code} - {selectedWarehouse.name}
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Mã Kho
+                </p>
+                <p className="text-sm font-medium text-gray-900 dark:text-white mt-1">
+                  {selectedWarehouse.code}
+                </p>
               </div>
-            </div>
 
-            <div className="p-5 lg:p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50">
-                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
-                    Diện Tích Kho
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {selectedWarehouse.dienTich} <span className="text-sm font-normal text-gray-500">m²</span>
-                  </p>
-                </div>
+              <div>
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Tên Kho
+                </p>
+                <p className="text-sm font-medium text-gray-900 dark:text-white mt-1">
+                  {selectedWarehouse.name}
+                </p>
+              </div>
 
-                <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50">
-                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
-                    Người Quản Lý
-                  </p>
-                  <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {selectedWarehouse.nguoiQuanLy}
-                  </p>
-                </div>
+              <div>
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Loại Kho
+                </p>
+                <p className="text-sm text-gray-900 dark:text-white mt-1">
+                  {selectedWarehouse.typeId}
+                </p>
+              </div>
 
-                <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50">
-                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
-                    SĐT
-                  </p>
-                  <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {selectedWarehouse.sdtNguoiQuanLy}
-                  </p>
-                </div>
+              <div>
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Diện Tích (m²)
+                </p>
+                <p className="text-sm text-gray-900 dark:text-white mt-1">
+                  {selectedWarehouse.area || "-"}
+                </p>
+              </div>
 
-                <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50">
-                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
-                    Trạng Thái
-                  </p>
-                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                    selectedWarehouse.trangThai === "Hoạt động"
+              <div>
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Người Quản Lý
+                </p>
+                <p className="text-sm text-gray-900 dark:text-white mt-1">
+                  {selectedWarehouse.managerName || "-"}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Số Điện Thoại
+                </p>
+                <p className="text-sm text-gray-900 dark:text-white mt-1">
+                  {selectedWarehouse.managerPhone || "-"}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Địa Chỉ
+                </p>
+                <p className="text-sm text-gray-900 dark:text-white mt-1">
+                  {selectedWarehouse.address || "-"}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Trạng Thái
+                </p>
+                <div className="mt-1">
+                  <span className={`inline-flex items-center whitespace-nowrap px-2.5 py-1 rounded-full text-xs font-medium ${
+                    selectedWarehouse.status === "Hoạt động"
                       ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                       : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
                   }`}>
-                    {selectedWarehouse.trangThai}
+                    {selectedWarehouse.status || "Chưa xác định"}
                   </span>
                 </div>
-
-                <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50">
-                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
-                    Ngày Tạo
-                  </p>
-                  <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {formatDate(selectedWarehouse.ngayTao)}
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20">
-                  <p className="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-2">
-                    Hành động
-                  </p>
-                  <button
-                    onClick={() => handleToggleStatus(selectedWarehouse.id)}
-                    className="w-full px-3 py-2 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    {selectedWarehouse.trangThai === "Hoạt động" ? "Vô hiệu hóa" : "Kích hoạt"}
-                  </button>
-                </div>
               </div>
 
-              <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-800">
-                <div>
-                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
-                    Mô Tả
+              <div>
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Ngày Tạo
+                </p>
+                <p className="text-sm text-gray-900 dark:text-white mt-1">
+                  {selectedWarehouse.createdTime ? formatDate(selectedWarehouse.createdTime) : "-"}
+                </p>
+              </div>
+
+              {selectedWarehouse.note && (
+                <div className="md:col-span-2">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Ghi Chú
                   </p>
-                  <p className="text-gray-700 dark:text-gray-300 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                    {selectedWarehouse.moTa || "Chưa có mô tả cho kho này."}
+                  <p className="text-sm text-gray-900 dark:text-white mt-1">
+                    {selectedWarehouse.note}
                   </p>
                 </div>
-              </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3 mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => handleEditWarehouse(selectedWarehouse)}
+                className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-all duration-200 shadow-sm"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Chỉnh Sửa
+              </button>
+              <button
+                onClick={() => selectedWarehouse.id && handleDeleteWarehouse(selectedWarehouse.id)}
+                className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-all duration-200 shadow-sm"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Xóa
+              </button>
             </div>
           </div>
         </div>

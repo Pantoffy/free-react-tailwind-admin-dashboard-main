@@ -52,11 +52,7 @@ const navItems: NavItem[] = [
       { name: "Quản Lý Kho", path: "/quan-ly-kho", pro: false },
     ],
   },
-  {
-    name: "Tables",
-    icon: <TableIcon />,
-    subItems: [{ name: "Bảng dữ liệu", path: "/basic-tables", pro: false }],
-  },
+
   {
     name: "Trang",
     icon: <PageIcon />,
@@ -68,14 +64,6 @@ const navItems: NavItem[] = [
 ];
 
 const othersItems: NavItem[] = [
-  {
-    icon: <PieChartIcon />,
-    name: "Biểu đồ",
-    subItems: [
-      { name: "Biểu đồ đường", path: "/line-chart", pro: false },
-      { name: "Biểu đồ cột", path: "/bar-chart", pro: false },
-    ],
-  },
   {
     icon: <BoxCubeIcon />,
     name: "Thành phần UI",
@@ -93,7 +81,6 @@ const othersItems: NavItem[] = [
     name: "Xác thực",
     subItems: [
       { name: "Đăng nhập", path: "/signin", pro: false },
-      { name: "Đăng ký", path: "/signup", pro: false },
     ],
   },
 ];

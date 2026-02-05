@@ -2,7 +2,6 @@ import { BrowserRouter as Router, Routes, Route } from "react-router";
 import { ToastContainer } from "./components/common/Toast";
 import { ConfirmDialog } from "./components/common/ConfirmDialog";
 import SignIn from "./pages/AuthPages/SignIn";
-import SignUp from "./pages/AuthPages/SignUp";
 import NotFound from "./pages/OtherPage/NotFound";
 import Videos from "./pages/UiElements/Videos";
 import Images from "./pages/UiElements/Images";
@@ -10,10 +9,7 @@ import Alerts from "./pages/UiElements/Alerts";
 import Badges from "./pages/UiElements/Badges";
 import Avatars from "./pages/UiElements/Avatars";
 import Buttons from "./pages/UiElements/Buttons";
-import LineChart from "./pages/Charts/LineChart";
-import BarChart from "./pages/Charts/BarChart";
 import Calendar from "./pages/Calendar";
-import BasicTables from "./pages/Tables/BasicTables";
 import FormElements from "./pages/Forms/FormElements";
 import Blank from "./pages/Blank";
 import AppLayout from "./layout/AppLayout";
@@ -24,7 +20,7 @@ import DonDatHang from "./pages/Forms/DonDatHang";
 import XuatKho from "./pages/Forms/XuatKho";
 import Materials from "./pages/Inventory/Materials";
 import Suppliers from "./pages/Inventory/Suppliers";
-import QuanLyKho from "./pages/Inventory/QuanLyKho";
+import Warehouse from "./pages/Inventory/Warehouse";
 
 export default function App() {
   return (
@@ -51,10 +47,7 @@ export default function App() {
             {/* Inventory Management */}
             <Route path="/quan-ly-nguyen-lieu" element={<Materials />} />
             <Route path="/quan-ly-nha-cung-cap" element={<Suppliers />} />
-            <Route path="/quan-ly-kho" element={<QuanLyKho />} />
-
-            {/* Tables */}
-            <Route path="/basic-tables" element={<BasicTables />} />
+            <Route path="/quan-ly-kho" element={<Warehouse />} />
 
             {/* Ui Elements */}
             <Route path="/alerts" element={<Alerts />} />
@@ -63,15 +56,10 @@ export default function App() {
             <Route path="/buttons" element={<Buttons />} />
             <Route path="/images" element={<Images />} />
             <Route path="/videos" element={<Videos />} />
-
-            {/* Charts */}
-            <Route path="/line-chart" element={<LineChart />} />
-            <Route path="/bar-chart" element={<BarChart />} />
           </Route>
 
           {/* Auth Layout */}
           <Route path="/signin" element={<SignIn />} />
-          <Route path="/signup" element={<SignUp />} />
 
           {/* Fallback Route */}
           <Route path="*" element={<NotFound />} />

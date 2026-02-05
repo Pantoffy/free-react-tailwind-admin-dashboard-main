@@ -20,7 +20,7 @@ export interface Supplier {
 // Create axios instance with base configuration
 // Sử dụng Vite proxy - request sẽ đi qua localhost:5173/api rồi proxy sang backend
 const apiClient = axios.create({
-  baseURL: "/api/Supplier/api/suppliers",
+  baseURL: "/api/Supplier",
   headers: {
     "Content-Type": "application/json",
   },
@@ -31,7 +31,7 @@ export const supplierService = {
   // GET all suppliers
   getAllSuppliers: async (): Promise<Supplier[]> => {
     try {
-      const response = await apiClient.get<Supplier[]>("");
+      const response = await apiClient.get<Supplier[]>("/List");
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -61,7 +61,7 @@ export const supplierService = {
   // POST create new supplier
   createSupplier: async (supplier: Omit<Supplier, "id" | "createdTime">): Promise<Supplier> => {
     try {
-      const response = await apiClient.post<Supplier>("", supplier);
+      const response = await apiClient.post<Supplier>("/Add", supplier);
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
